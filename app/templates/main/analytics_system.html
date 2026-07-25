@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client_name }} · System Analytics{% endblock %}
+
+{% block content %}
+<section class="welcome">
+    <h1>Analytics</h1>
+    <p class="welcome__subtitle">{{ client_name }}</p>
+</section>
+
+<div class="subnav">
+    <a href="{{ url_for('main.analytics_system') }}" class="subnav__link is-active">System Analytics</a>
+    <!-- More analytics pages can be added here later -->
+</div>
+
+<form method="get" action="{{ url_for('main.analytics_system') }}" class="filters">
+    <div class="filters__fields">
+        <div class="filters__group">
+            <label for="start_date">From</label>
+            <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
+        </div>
+        <div class="filters__group">
+            <label for="end_date">To</label>
+            <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
+        </div>
+    </div>
+    <div class="filters__actions">
+        <button type="submit" class="filters__apply">Apply Filters</button>
+        <a href="{{ url_for('main.analytics_system') }}" class="filters__reset">Reset Filters</a>
+    </div>
+</form>
+
+{% if error %}
+<section class="panel">
+    <p class="panel__hint">{{ error }}</p>
+</section>
+{% elif total_count == 0 %}
+<section class="empty-state">
+    <p class="empty-state__title">No activity records in this range</p>
+    <p class="empty-state__body">Try widening the date range.</p>
+</section>
+{% else %}
+
+<section class="stat-grid">
+    <div class="stat-card">
+        <span class="stat-card__label">Total Activities</span>
+        <span class="stat-card__value">{{ total_count }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-card__label">PASS</span>
+        <span class="stat-card__value stat-card__value--pass">{{ pass_count }}</span>
+        <span class="stat-card__sub">{{ pass_pct }}%</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-card__label">FAIL</span>
+        <span class="stat-card__value stat-card__value--fail">{{ fail_count }}</span>
+        <span class="stat-card__sub">{{ fail_pct }}%</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-card__label">MISSING_DATA</span>
+        <span class="stat-card__value stat-card__value--warn">{{ missing_count }}</span>
+        <span class="stat-card__sub">{{ missing_pct }}%</span>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel__header">
+        <h2>Camera-wise distribution</h2>
+        <span class="panel__hint">{{ camera_distribution|length }} camera(s)</span>
+    </div>
+    <div class="bar-chart">
+        {% for cam, count in camera_distribution %}
+        <div class="bar-row">
+            <span class="bar-row__label">{{ cam }}</span>
+            <div class="bar-row__track">
+                <div class="bar-row__fill" style="width: {{ (count / max_camera_count * 100) if max_camera_count else 0 }}%;"></div>
+            </div>
+            <span class="bar-row__value">{{ count }} ({{ '%.1f'|format(count / total_count * 100) if total_count else 0 }}%)</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel__header">
+        <h2>Top 10 highest weight difference</h2>
+        <span class="panel__hint">Within selected date range</span>
+    </div>
+    {% if not top_weight_diff %}
+    <p class="panel__hint">No numeric weight-difference data in this range.</p>
+    {% else %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Camera</th>
+                    <th>Activity #</th>
+                    <th>Order #</th>
+                    <th>Expected Wt</th>
+                    <th>Actual Wt</th>
+                    <th>Difference</th>
+                    <th>Diff %</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in top_weight_diff %}
+                <tr>
+                    <td>{{ row.camera_name }}</td>
+                    <td>{{ row.activity_number }}</td>
+                    <td>{{ row.order_number }}</td>
+                    <td>{{ row.expected_weight }}</td>
+                    <td>{{ row.actual_weight }}</td>
+                    <td>{{ row.weight_difference }}</td>
+                    <td>{{ row.weight_difference_percent }}</td>
+                    <td>
+                        <a href="{{ url_for('main.activity_detail', activity_id=row._id) }}?start_date={{ start_date }}&end_date={{ end_date }}" class="btn-view">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</section>
+
+{% endif %}
+{% endblock %}

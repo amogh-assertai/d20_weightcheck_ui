@@ -50,6 +50,16 @@ def _format_timestamp(timestamp_value):
         return str(timestamp_value)
 
 
+def _parse_percent(value):
+    """Parse a percentage-like string (e.g. '24.23%') into a float, or None if not parseable."""
+    if value is None:
+        return None
+    try:
+        return float(str(value).replace("%", "").strip())
+    except ValueError:
+        return None
+
+
 def _sort_key(doc, field):
     """
     Sort key that handles numeric-looking values (weights, percentages stored as
@@ -185,6 +195,123 @@ def settings():
     except Exception as e:
         current_app.logger.error(f"Error rendering settings page: {e}")
         return "Something went wrong loading settings.", 500
+
+
+@main_bp.route("/analytics")
+def analytics():
+    """Analytics section landing - redirects to the first sub-page (System Analytics)."""
+    return redirect(url_for("main.analytics_system"))
+
+
+@main_bp.route("/analytics/system")
+def analytics_system():
+    """
+    System Analytics: activity volume, camera-wise distribution, PASS/FAIL/
+    MISSING_DATA breakdown, and top-10 highest weight differences - all
+    scoped to a date range (defaults to today only).
+    """
+    db = current_app.extensions.get("mongo_db")
+    error = None
+    total_count = 0
+    pass_count = fail_count = missing_count = 0
+    camera_distribution = []
+    max_camera_count = 0
+    top_weight_diff = []
+
+    today = datetime.now(timezone.utc).date()
+    start_date_str = request.args.get("start_date", today.isoformat())
+    end_date_str = request.args.get("end_date", today.isoformat())
+
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        start_date = today
+        start_date_str = today.isoformat()
+
+    try:
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        end_date = today
+        end_date_str = today.isoformat()
+
+    if db is None:
+        error = "Database not configured."
+    else:
+        try:
+            all_docs = list(db["all_activities"].find({}))
+            filtered = []
+            for doc in all_docs:
+                doc_date = _parse_activity_date(doc.get("timestamp"))
+                if doc_date is not None and not (start_date <= doc_date <= end_date):
+                    continue
+                filtered.append(doc)
+
+            total_count = len(filtered)
+
+            camera_counter = {}
+            for doc in filtered:
+                cam = doc.get("camera_name", "Unknown")
+                camera_counter[cam] = camera_counter.get(cam, 0) + 1
+                result = doc.get("validation_result")
+                if result == "PASS":
+                    pass_count += 1
+                elif result == "FAIL":
+                    fail_count += 1
+                elif result == "MISSING_DATA":
+                    missing_count += 1
+
+            camera_distribution = sorted(camera_counter.items(), key=lambda kv: kv[1], reverse=True)
+            max_camera_count = max(camera_counter.values()) if camera_counter else 0
+
+            # Top 10 highest weight difference % - only among docs where it
+            # actually parses as a number (can't meaningfully rank the rest).
+            candidates = []
+            for doc in filtered:
+                pct = _parse_percent(doc.get("weight_difference_percent"))
+                if pct is not None:
+                    candidates.append((pct, doc))
+            candidates.sort(key=lambda t: t[0], reverse=True)
+
+            for pct, doc in candidates[:10]:
+                top_weight_diff.append({
+                    "_id": str(doc["_id"]),
+                    "camera_name": doc.get("camera_name", "-"),
+                    "activity_number": doc.get("activity_number", "-"),
+                    "order_number": doc.get("actual_order_number", doc.get("expected_order_number", "-")),
+                    "expected_weight": doc.get("expected_weight", "-"),
+                    "actual_weight": doc.get("actual_weight", "-"),
+                    "weight_difference": doc.get("weight_difference", "-"),
+                    "weight_difference_percent": doc.get("weight_difference_percent", "-"),
+                })
+        except Exception as e:
+            current_app.logger.error(f"Error computing system analytics: {e}")
+            error = "Could not load analytics."
+
+    def pct_of(n):
+        return round((n / total_count * 100), 1) if total_count else 0.0
+
+    context = _base_context()
+    context.update({
+        "error": error,
+        "start_date": start_date_str,
+        "end_date": end_date_str,
+        "total_count": total_count,
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "missing_count": missing_count,
+        "pass_pct": pct_of(pass_count),
+        "fail_pct": pct_of(fail_count),
+        "missing_pct": pct_of(missing_count),
+        "camera_distribution": camera_distribution,
+        "max_camera_count": max_camera_count,
+        "top_weight_diff": top_weight_diff,
+    })
+
+    try:
+        return render_template("main/analytics_system.html", **context)
+    except Exception as e:
+        current_app.logger.error(f"Error rendering analytics page: {e}")
+        return "Something went wrong loading analytics.", 500
 
 
 @main_bp.route("/history")

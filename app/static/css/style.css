@@ -716,6 +716,12 @@ body.page-fit-screen .detail-right-column {
     overflow-y: auto; /* safety net only - shouldn't be needed with normal data */
 }
 
+/* Left panel only has a handful of fields right now - let it size to its own
+   content instead of stretching to fill the row (image/right column still do). */
+body.page-fit-screen .detail-side--left {
+    align-self: start;
+}
+
 body.page-fit-screen .detail-image {
     display: flex;
     flex-direction: column;
@@ -813,6 +819,127 @@ body.page-fit-screen .footer {
     font-size: 11px;
     color: var(--text-muted);
     font-family: var(--font-mono);
+}
+
+/* --- Analytics: sub-nav tabs (room for more analytics pages later) --- */
+.subnav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 8px;
+}
+
+.subnav__link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.subnav__link:hover {
+    color: var(--text);
+    background: var(--panel);
+}
+
+.subnav__link.is-active {
+    color: var(--accent);
+    background: var(--panel);
+}
+
+/* --- Analytics: stat cards --- */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-card__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stat-card__value {
+    font-size: 30px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+}
+
+.stat-card__value--pass { color: #12C785; }
+.stat-card__value--fail { color: #E84444; }
+.stat-card__value--warn { color: #F0A52D; }
+
+.stat-card__sub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* --- Analytics: camera-wise distribution bar chart (plain CSS, no JS lib) --- */
+.bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bar-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 120px;
+    align-items: center;
+    gap: 12px;
+}
+
+.bar-row__label {
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bar-row__track {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    height: 18px;
+    overflow: hidden;
+}
+
+.bar-row__fill {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 4px 0 0 4px;
+    transition: width 0.3s ease;
+}
+
+.bar-row__value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .bar-row {
+        grid-template-columns: 90px 1fr 90px;
+    }
 }
 
 /* --- Footer --- */
