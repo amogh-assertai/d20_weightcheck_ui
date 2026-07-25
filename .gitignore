@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+
+# --- Virtual environments ---
+venv/
+.venv/
+env/
+
+# --- Environment / secrets ---
+.env
+.env.local
+
+# --- Flask instance folder (uploaded images, per-deployment local data) ---
+# Nothing here should ever be committed - this is exactly where evidence
+# images land (uploads/{date}/{camera}/...) and any other local-only data.
+instance/
+
+# --- Logs ---
+logs/
+*.log
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- Editor/IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Test/coverage caches ---
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,721 @@
+/* ---------------------------------------------------
+   Weight Check - base theme
+   Dark (default) + light theme via [data-theme] on <html>.
+--------------------------------------------------- */
+
+:root {
+    --font-display: "Inter", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+html[data-theme="dark"] {
+    --bg: #0B0E11;
+    --panel: #12161C;
+    --panel-border: #1E2530;
+    --text: #E4E7EB;
+    --text-muted: #6B7280;
+    --accent: #12C7B5;      /* signal teal - "online/active" */
+    --accent-dim: #0E8F82;
+}
+
+html[data-theme="light"] {
+    --bg: #F5F6F8;
+    --panel: #FFFFFF;
+    --panel-border: #DCE0E6;
+    --text: #1A1D22;
+    --text-muted: #6B7280;
+    --accent: #0E8F82;
+    --accent-dim: #0B6E64;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* --- Top bar --- */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.topbar__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.topbar__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+.topbar__client {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+}
+
+.topbar__right {
+    display: flex;
+    align-items: center;
+}
+
+.theme-toggle {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.theme-toggle:hover {
+    border-color: var(--accent);
+}
+
+/* --- Nav bar (Home / Live Monitoring / Settings / History) --- */
+.navbar {
+    display: flex;
+    gap: 4px;
+    padding: 10px 32px;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.navbar__link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.navbar__link:hover {
+    color: var(--text);
+    background: var(--panel);
+}
+
+.navbar__link.is-active {
+    color: var(--accent);
+    background: var(--panel);
+}
+
+/* --- Content layout ---
+   Fluid width instead of a small fixed cap: scales up on large/TV-size
+   displays instead of leaving big empty margins, but still caps out so
+   lines/cards don't stretch absurdly wide on ultra-large screens. */
+.content {
+    flex: 1;
+    max-width: min(1600px, 94vw);
+    width: 100%;
+    margin: 0 auto;
+    padding: clamp(20px, 2.5vw, 40px);
+}
+
+/* --- Simple placeholder for pages with no content yet --- */
+.page-placeholder {
+    text-align: center;
+    padding: clamp(60px, 12vh, 140px) 20px;
+}
+
+.page-placeholder__text {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+}
+
+/* --- Welcome section --- */
+.welcome {
+    text-align: center;
+    padding: 12px 0 8px;
+}
+
+.welcome h1 {
+    font-size: clamp(22px, 2.4vw, 34px);
+    margin: 0 0 6px;
+}
+
+.welcome__subtitle {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* --- Table section: small left/right inset, 4 cards at the corners --- */
+.table-section {
+    margin-top: 32px;
+    padding: 0 20px;
+}
+
+/* The board is the visible playing surface - a bordered frame with open space
+   in the middle. Cards are pinned to its 4 corners rather than filling a grid.
+   Fixed height (instead of min-height) is needed so the cards below can size
+   themselves as a % of the board without overflowing or needing scroll. */
+.board {
+    position: relative;
+    height: clamp(360px, 62vh, 720px);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+}
+
+.table-card {
+    position: absolute;
+    width: 32%;
+    height: 42%;
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 24px 28px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.table-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+.table-card__index {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.table-card__name {
+    font-size: clamp(16px, 1.6vw, 24px);
+    font-weight: 600;
+}
+
+/* Corner placements */
+.table-card--tl { top: 28px; left: 28px; }
+.table-card--tr { top: 28px; right: 28px; }
+.table-card--bl { bottom: 28px; left: 28px; }
+.table-card--br { bottom: 28px; right: 28px; }
+
+/* --- Generic panel + empty-state (kept for reuse on future pages) --- */
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 24px;
+}
+
+.panel__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.panel__header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.panel__hint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    border: 1px dashed var(--panel-border);
+    border-radius: 6px;
+}
+
+.empty-state__title {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--text);
+    margin: 0 0 8px;
+}
+
+.empty-state__body {
+    font-size: 13px;
+    color: var(--text-muted);
+    max-width: 420px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* --- History data table --- */
+.table-wrap {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--panel-border);
+    white-space: nowrap;
+}
+
+.data-table th {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* --- Status badges (matches the PASS/FAIL/orange/gray convention from the AI backend) --- */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge--pass {
+    background: rgba(18, 199, 133, 0.15);
+    color: #12C785;
+}
+
+.badge--fail {
+    background: rgba(232, 68, 68, 0.15);
+    color: #E84444;
+}
+
+.badge--warn {
+    background: rgba(240, 165, 45, 0.15);
+    color: #F0A52D;
+}
+
+.badge--muted {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-muted);
+}
+
+/* --- History filters bar --- */
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+}
+
+.filters__group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filters__group label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.filters__group select,
+.filters__group input[type="date"],
+.filters__group input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--font-display);
+}
+
+.filters__group--search input {
+    min-width: 220px;
+}
+
+.filters__apply {
+    background: var(--accent);
+    color: #04201C;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 18px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.filters__apply:hover {
+    opacity: 0.85;
+}
+
+.filters__group--checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.filters__reset {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 9px 16px;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.filters__reset:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+/* --- Sortable column headers --- */
+.sort-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sort-link:hover {
+    color: var(--text);
+}
+
+.sort-arrow {
+    margin-left: 4px;
+    color: var(--accent);
+}
+
+/* --- Activity detail: prev/next + camera/time header --- */
+.detail-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 12px 0 4px;
+}
+
+.detail-nav {
+    flex: 0 0 140px;
+}
+
+.detail-nav--next {
+    text-align: right;
+}
+
+.nav-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: border-color 0.15s ease;
+}
+
+.nav-btn:hover {
+    border-color: var(--accent);
+}
+
+.detail-header-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.detail-header-center__camera {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.detail-header-center__time {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* --- Activity detail: left panel / image / right panel ---
+   Side panels are a fixed narrower width so the image dominates the row. */
+.detail-body {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) 1fr minmax(220px, 280px);
+    gap: 24px;
+    align-items: start;
+    margin-top: 16px;
+}
+
+.detail-side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 18px;
+}
+
+.field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.field-row__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.field-row__value {
+    font-size: 14px;
+    word-break: break-word;
+}
+
+/* --- Review panel (mark to discuss / mark OCR wrong / comment) --- */
+.review-panel {
+    margin-top: 28px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: flex-start;
+}
+
+.review-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.review-group--comment {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.review-group__label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    min-width: 220px;
+}
+
+.toggle-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.toggle-buttons__option {
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.toggle-buttons__option input {
+    display: none;
+}
+
+.toggle-buttons__option.is-selected {
+    border-color: var(--accent);
+    background: rgba(18, 199, 133, 0.12);
+    color: var(--accent);
+}
+
+.review-group--comment textarea {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    resize: vertical;
+}
+
+/* Stack the 3-column detail layout on narrower screens */
+@media (max-width: 900px) {
+    .detail-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- View Details button in the table --- */
+.btn-view {
+    display: inline-block;
+    padding: 5px 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: var(--accent);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    transition: border-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn-view:hover {
+    border-color: var(--accent);
+}
+
+/* --- Pagination --- */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pagination__info {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--font-mono);
+}
+
+.pagination__controls {
+    display: flex;
+    gap: 10px;
+}
+
+.pagination__link {
+    color: var(--text);
+    text-decoration: none;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    transition: border-color 0.15s ease;
+}
+
+.pagination__link:hover {
+    border-color: var(--accent);
+}
+
+/* --- Activity detail page: image + fields side by side (rough layout for now) --- */
+.zoom-container {
+    position: relative;
+    width: 100%;
+    height: clamp(420px, 70vh, 780px);
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #000;
+}
+
+.zoom-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform-origin: center center;
+    transition: transform 0.05s linear;
+    user-select: none;
+    -webkit-user-drag: none;
+    cursor: default;
+}
+
+.zoom-hint {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+/* --- Footer --- */
+.footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--panel-border);
+}
+
+/* --- Responsive --- */
+@media (max-width: 640px) {
+    /* Corner-pinned absolute layout doesn't work on narrow screens - stack instead */
+    .board {
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 16px;
+    }
+    .table-card {
+        position: static;
+        width: 100%;
+        height: auto;
+    }
+    .topbar {
+        padding: 14px 18px;
+    }
+    .content {
+        padding: 20px;
+    }
+    .table-section {
+        padding: 0 8px;
+    }
+}

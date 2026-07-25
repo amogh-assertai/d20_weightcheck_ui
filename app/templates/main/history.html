@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client_name }} · History{% endblock %}
+
+{% macro sort_link(field, label, selected_sort, selected_order) %}
+{% set args = request.args.to_dict() %}
+{% if selected_sort == field and selected_order == 'asc' %}
+    {% set _ = args.update({'sort': field, 'order': 'desc', 'page': 1}) %}
+{% else %}
+    {% set _ = args.update({'sort': field, 'order': 'asc', 'page': 1}) %}
+{% endif %}
+<a href="{{ url_for('main.history', **args) }}" class="sort-link">{{ label }}{% if selected_sort == field %}<span class="sort-arrow">{{ '\u25b2' if selected_order == 'asc' else '\u25bc' }}</span>{% endif %}</a>
+{% endmacro %}
+
+{% block content %}
+<section class="welcome">
+    <h1>History</h1>
+    <p class="welcome__subtitle">{{ client_name }}</p>
+</section>
+
+<form method="get" action="{{ url_for('main.history') }}" class="filters">
+    <div class="filters__group">
+        <label for="table">Table</label>
+        <select name="table" id="table">
+            <option value="all" {% if selected_table == 'all' %}selected{% endif %}>All tables</option>
+            {% for cam in camera_options %}
+            <option value="{{ cam }}" {% if selected_table == cam %}selected{% endif %}>{{ cam }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filters__group">
+        <label for="start_date">From</label>
+        <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
+    </div>
+
+    <div class="filters__group">
+        <label for="end_date">To</label>
+        <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
+    </div>
+
+    <div class="filters__group">
+        <label for="result">Result</label>
+        <select name="result" id="result">
+            <option value="all" {% if selected_result == 'all' %}selected{% endif %}>All results</option>
+            <option value="PASS" {% if selected_result == 'PASS' %}selected{% endif %}>PASS</option>
+            <option value="FAIL" {% if selected_result == 'FAIL' %}selected{% endif %}>FAIL</option>
+        </select>
+    </div>
+
+    <div class="filters__group filters__group--search">
+        <label for="search">Search (Order # / Activity #)</label>
+        <input type="text" name="search" id="search" placeholder="e.g. E0843867 or 42" value="{{ search_term }}">
+    </div>
+
+    <div class="filters__group filters__group--checkbox">
+        <label>
+            <input type="checkbox" name="discuss" value="1" {% if discuss_only %}checked{% endif %}>
+            Marked for discussion
+        </label>
+    </div>
+
+    <div class="filters__group filters__group--checkbox">
+        <label>
+            <input type="checkbox" name="ocr_wrong" value="1" {% if ocr_wrong_only %}checked{% endif %}>
+            OCR wrong marked
+        </label>
+    </div>
+
+    <div class="filters__group filters__group--checkbox">
+        <label>
+            <input type="checkbox" name="has_comment" value="1" {% if has_comment_only %}checked{% endif %}>
+            Has comment
+        </label>
+    </div>
+
+    <div class="filters__group">
+        <label for="per_page">Records per page</label>
+        <select name="per_page" id="per_page">
+            {% for n in allowed_per_page %}
+            <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="filters__apply">Apply</button>
+    <a href="{{ url_for('main.history') }}" class="filters__reset">Reset</a>
+</form>
+
+{% if error %}
+<section class="panel">
+    <p class="panel__hint">{{ error }}</p>
+</section>
+{% elif not activities %}
+<section class="empty-state">
+    <p class="empty-state__title">No matching activity records</p>
+    <p class="empty-state__body">
+        Try widening the date range or clearing a filter.
+    </p>
+</section>
+{% else %}
+<section class="panel">
+    <div class="panel__header">
+        <h2>Activity records</h2>
+        <span class="panel__hint">{{ total_count }} total record(s)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ sort_link('timestamp', 'Date / Time', selected_sort, selected_order) }}</th>
+                    <th>{{ sort_link('camera_name', 'Camera', selected_sort, selected_order) }}</th>
+                    <th>{{ sort_link('activity_number', 'Activity #', selected_sort, selected_order) }}</th>
+                    <th>Order #</th>
+                    <th>Order Match</th>
+                    <th>{{ sort_link('expected_weight', 'Expected Wt', selected_sort, selected_order) }}</th>
+                    <th>{{ sort_link('actual_weight', 'Actual Wt', selected_sort, selected_order) }}</th>
+                    <th>{{ sort_link('weight_difference_percent', 'Diff %', selected_sort, selected_order) }}</th>
+                    <th>{{ sort_link('validation_result', 'Result', selected_sort, selected_order) }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in activities %}
+                {% set matching = a.get('order_number_matching', '--') %}
+                {% set result = a.get('validation_result', 'MISSING') %}
+                <tr>
+                    <td>{{ a.get('timestamp_display', '-') }}</td>
+                    <td>{{ a.get('camera_name', '-') }}</td>
+                    <td>{{ a.get('activity_number', '-') }}</td>
+                    <td>{{ a.get('actual_order_number', a.get('expected_order_number', '-')) }}</td>
+                    <td>
+                        <span class="badge badge--{{ 'pass' if matching == 'YES' else 'fail' if matching == 'NO' else 'muted' }}">
+                            {{ matching }}
+                        </span>
+                    </td>
+                    <td>{{ a.get('expected_weight', '-') }}</td>
+                    <td>{{ a.get('actual_weight', '-') }}</td>
+                    <td>{{ a.get('weight_difference_percent', '-') }}</td>
+                    <td>
+                        <span class="badge badge--{{ 'pass' if result == 'PASS' else 'fail' if result == 'FAIL' else 'warn' if result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">
+                            {{ result }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('main.activity_detail', activity_id=a.get('_id')) }}?{{ request.query_string.decode() }}" class="btn-view">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% set query_without_page = request.args.to_dict() %}
+    {% set _ = query_without_page.pop('page', None) %}
+    <div class="pagination">
+        <span class="pagination__info">Page {{ page }} of {{ total_pages }}</span>
+        <div class="pagination__controls">
+            {% if page > 1 %}
+            <a href="{{ url_for('main.history', page=page-1, **query_without_page) }}" class="pagination__link">&larr; Prev</a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="{{ url_for('main.history', page=page+1, **query_without_page) }}" class="pagination__link">Next &rarr;</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

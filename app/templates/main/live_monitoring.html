@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client_name }} · Live Monitoring{% endblock %}
+
+{% block content %}
+<section class="welcome">
+    <h1>Live Monitoring</h1>
+    <p class="welcome__subtitle">{{ client_name }}</p>
+</section>
+
+<section class="table-section">
+    <div class="board">
+        <a href="#" class="table-card table-card--tl">
+            <span class="table-card__index">01</span>
+            <span class="table-card__name">Table 1</span>
+        </a>
+        <a href="#" class="table-card table-card--tr">
+            <span class="table-card__index">02</span>
+            <span class="table-card__name">Table 2</span>
+        </a>
+        <a href="#" class="table-card table-card--bl">
+            <span class="table-card__index">03</span>
+            <span class="table-card__name">Table 3</span>
+        </a>
+        <a href="#" class="table-card table-card--br">
+            <span class="table-card__index">04</span>
+            <span class="table-card__name">Table 4</span>
+        </a>
+    </div>
+</section>
+{% endblock %}

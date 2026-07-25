@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ client_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Apply saved theme before first paint, so there's no flash of the wrong theme.
+        // Default stays "dark" (set in the <html> tag above) if nothing is saved yet.
+        (function () {
+            try {
+                var saved = localStorage.getItem('theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) {
+                // localStorage unavailable (e.g. private browsing) - default theme stays active
+            }
+        })();
+    </script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar__brand">
+            <span class="topbar__dot"></span>
+            <span class="topbar__client">{{ client_name }}</span>
+        </div>
+        <div class="topbar__right">
+            <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+                <span id="theme-toggle-icon">&#9789;</span>
+                <span id="theme-toggle-label">Dark</span>
+            </button>
+        </div>
+    </header>
+
+    <nav class="navbar">
+        <a href="{{ url_for('main.home') }}" class="navbar__link{% if request.endpoint == 'main.home' %} is-active{% endif %}">Home</a>
+        <a href="{{ url_for('main.live_monitoring') }}" class="navbar__link{% if request.endpoint == 'main.live_monitoring' %} is-active{% endif %}">Live Monitoring</a>
+        <a href="{{ url_for('main.settings') }}" class="navbar__link{% if request.endpoint == 'main.settings' %} is-active{% endif %}">Settings</a>
+        <a href="{{ url_for('main.history') }}" class="navbar__link{% if request.endpoint == 'main.history' %} is-active{% endif %}">History</a>
+    </nav>
+
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <span>{{ client_name }} &mdash; local inference, cloud visibility</span>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

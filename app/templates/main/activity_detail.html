@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client_name }} · Activity #{{ activity.get('activity_number', '-') }}{% endblock %}
+
+{% block content %}
+<p>
+    <a href="{{ url_for('main.history') }}{% if query_string %}?{{ query_string }}{% endif %}" class="pagination__link">&larr; Back to History</a>
+</p>
+
+<section class="detail-top">
+    <div class="detail-nav detail-nav--prev">
+        {% if prev_id %}
+        <a id="prev-link" href="{{ url_for('main.activity_detail', activity_id=prev_id) }}{% if query_string %}?{{ query_string }}{% endif %}" class="nav-btn">&larr; Previous</a>
+        {% endif %}
+    </div>
+
+    <div class="detail-header-center">
+        <span class="detail-header-center__camera">{{ activity.get('camera_name', '-') }}</span>
+        <span class="detail-header-center__time">{{ activity.get('timestamp_display', '-') }}</span>
+    </div>
+
+    <div class="detail-nav detail-nav--next">
+        {% if next_id %}
+        <a id="next-link" href="{{ url_for('main.activity_detail', activity_id=next_id) }}{% if query_string %}?{{ query_string }}{% endif %}" class="nav-btn">Next &rarr;</a>
+        {% endif %}
+    </div>
+</section>
+
+<section class="detail-body">
+    <div class="detail-side detail-side--left">
+        <div class="field-row">
+            <span class="field-row__label">Expected Order #</span>
+            <span class="field-row__value">{{ activity.get('expected_order_number', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Actual Order #</span>
+            <span class="field-row__value">{{ activity.get('actual_order_number', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Order Matched</span>
+            <span class="badge badge--{{ 'pass' if activity.get('order_number_matching') == 'YES' else 'fail' if activity.get('order_number_matching') == 'NO' else 'muted' }}">
+                {{ activity.get('order_number_matching', '--') }}
+            </span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Expected Weight</span>
+            <span class="field-row__value">{{ activity.get('expected_weight', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Actual Weight</span>
+            <span class="field-row__value">{{ activity.get('actual_weight', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Weight Difference</span>
+            <span class="field-row__value">{{ activity.get('weight_difference', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Weight Difference %</span>
+            <span class="field-row__value">{{ activity.get('weight_difference_percent', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Weight Result</span>
+            <span class="badge badge--{{ 'pass' if activity.get('weight_result') == 'PASS' else 'fail' if activity.get('weight_result') == 'FAIL' else 'muted' }}">
+                {{ activity.get('weight_result', '-') }}
+            </span>
+        </div>
+    </div>
+
+    <div class="detail-image">
+        {% if image_url %}
+            <div class="zoom-container" id="zoom-container">
+                <img id="zoom-image" src="{{ image_url }}" alt="Evidence image for activity {{ activity.get('activity_number', '') }}">
+            </div>
+            <p class="zoom-hint">Scroll to zoom &middot; drag to pan when zoomed &middot; &larr;/&rarr; for prev/next</p>
+        {% else %}
+            <p class="page-placeholder__text">No image available.</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-side detail-side--right">
+        <div class="field-row">
+            <span class="field-row__label">Activity #</span>
+            <span class="field-row__value">{{ activity.get('activity_number', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Order # Reason</span>
+            <span class="field-row__value">{{ activity.get('order_number_reason', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Weight Reason</span>
+            <span class="field-row__value">{{ activity.get('weight_reason', '-') }}</span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Validation Result</span>
+            <span class="badge badge--{{ 'pass' if activity.get('validation_result') == 'PASS' else 'fail' if activity.get('validation_result') == 'FAIL' else 'warn' if activity.get('validation_result') in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">
+                {{ activity.get('validation_result', '-') }}
+            </span>
+        </div>
+        <div class="field-row">
+            <span class="field-row__label">Validation Reason</span>
+            <span class="field-row__value">{{ activity.get('validation_reason', '-') }}</span>
+        </div>
+    </div>
+</section>
+
+<section class="review-panel">
+    <form method="post" action="{{ url_for('main.save_activity_review', activity_id=activity.get('_id')) }}" class="review-form">
+        <input type="hidden" name="query_string" value="{{ query_string }}">
+
+        <div class="review-group">
+            <span class="review-group__label">Mark image to discuss later</span>
+            <div class="toggle-buttons">
+                <label class="toggle-buttons__option{% if activity.get('mark_discuss') == 'YES' %} is-selected{% endif %}">
+                    <input type="radio" name="mark_discuss" value="YES" {% if activity.get('mark_discuss') == 'YES' %}checked{% endif %}> Yes
+                </label>
+                <label class="toggle-buttons__option{% if activity.get('mark_discuss') == 'NO' %} is-selected{% endif %}">
+                    <input type="radio" name="mark_discuss" value="NO" {% if activity.get('mark_discuss') == 'NO' %}checked{% endif %}> No
+                </label>
+            </div>
+        </div>
+
+        <div class="review-group">
+            <span class="review-group__label">Mark OCR results wrong</span>
+            <div class="toggle-buttons">
+                <label class="toggle-buttons__option{% if activity.get('mark_ocr_wrong') == 'YES' %} is-selected{% endif %}">
+                    <input type="radio" name="mark_ocr_wrong" value="YES" {% if activity.get('mark_ocr_wrong') == 'YES' %}checked{% endif %}> Yes
+                </label>
+                <label class="toggle-buttons__option{% if activity.get('mark_ocr_wrong') == 'NO' %} is-selected{% endif %}">
+                    <input type="radio" name="mark_ocr_wrong" value="NO" {% if activity.get('mark_ocr_wrong') == 'NO' %}checked{% endif %}> No
+                </label>
+            </div>
+        </div>
+
+        <div class="review-group review-group--comment">
+            <label class="review-group__label" for="review_comment">Comment</label>
+            <textarea name="review_comment" id="review_comment" rows="3" placeholder="Write any comment...">{{ activity.get('review_comment', '') }}</textarea>
+        </div>
+
+        <button type="submit" class="filters__apply">Save Review</button>
+    </form>
+</section>
+
+<script>
+(function () {
+    // --- Image zoom (wheel) + pan (drag when zoomed) ---
+    var container = document.getElementById('zoom-container');
+    var img = document.getElementById('zoom-image');
+    if (container && img) {
+        var scale = 1, minScale = 1, maxScale = 4;
+        var originX = 0, originY = 0;
+        var isDragging = false, startX = 0, startY = 0;
+
+        function applyTransform() {
+            img.style.transform = 'translate(' + originX + 'px, ' + originY + 'px) scale(' + scale + ')';
+            container.style.cursor = scale > minScale ? 'grab' : 'default';
+        }
+
+        container.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            var delta = e.deltaY < 0 ? 0.15 : -0.15;
+            scale = Math.min(maxScale, Math.max(minScale, scale + delta));
+            if (scale === minScale) { originX = 0; originY = 0; }
+            applyTransform();
+        }, { passive: false });
+
+        container.addEventListener('mousedown', function (e) {
+            if (scale <= minScale) return;
+            isDragging = true;
+            startX = e.clientX - originX;
+            startY = e.clientY - originY;
+            container.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', function (e) {
+            if (!isDragging) return;
+            originX = e.clientX - startX;
+            originY = e.clientY - startY;
+            applyTransform();
+        });
+
+        window.addEventListener('mouseup', function () {
+            isDragging = false;
+            applyTransform();
+        });
+    }
+
+    // --- Keyboard prev/next (skip if typing in the comment box) ---
+    document.addEventListener('keydown', function (e) {
+        var activeTag = (document.activeElement && document.activeElement.tagName) || '';
+        if (activeTag === 'TEXTAREA' || activeTag === 'INPUT') return;
+
+        if (e.key === 'ArrowLeft') {
+            var prevLink = document.getElementById('prev-link');
+            if (prevLink) window.location.href = prevLink.href;
+        } else if (e.key === 'ArrowRight') {
+            var nextLink = document.getElementById('next-link');
+            if (nextLink) window.location.href = nextLink.href;
+        }
+    });
+
+    // --- Fix: give instant visual feedback when a Yes/No option is picked ---
+    // (radios already enforce "only one selected" natively via shared 'name';
+    // this just keeps the highlighted-label class in sync with that choice.)
+    document.querySelectorAll('.toggle-buttons').forEach(function (group) {
+        group.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                group.querySelectorAll('.toggle-buttons__option').forEach(function (label) {
+                    label.classList.remove('is-selected');
+                });
+                if (radio.checked) {
+                    var label = radio.closest('.toggle-buttons__option');
+                    if (label) label.classList.add('is-selected');
+                }
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}
