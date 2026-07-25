@@ -41,13 +41,22 @@ body {
     transition: background 0.15s ease, color 0.15s ease;
 }
 
-/* --- Top bar --- */
+/* --- Top bar (brand + nav links + theme toggle, all one row) --- */
 .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 32px;
+    padding: 14px 32px;
     border-bottom: 1px solid var(--panel-border);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.topbar__left {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
 }
 
 .topbar__brand {
@@ -96,12 +105,10 @@ body {
     border-color: var(--accent);
 }
 
-/* --- Nav bar (Home / Live Monitoring / Settings / History) --- */
+/* --- Nav bar (Home / Live Monitoring / Settings / History) - now inline in the topbar --- */
 .navbar {
     display: flex;
     gap: 4px;
-    padding: 10px 32px;
-    border-bottom: 1px solid var(--panel-border);
 }
 
 .navbar__link {
@@ -332,17 +339,70 @@ body {
     color: var(--text-muted);
 }
 
+/* --- Flags column: compact combined indicator (discuss / system error / comment) --- */
+.flags-cell {
+    white-space: nowrap;
+}
+
+.flag-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 4px;
+    cursor: default;
+}
+
+.flag-badge--discuss {
+    background: rgba(59, 130, 246, 0.18);
+    color: #3B82F6;
+}
+
+.flag-badge--error {
+    background: rgba(232, 68, 68, 0.18);
+    color: #E84444;
+}
+
+.flag-badge--comment {
+    background: rgba(107, 114, 128, 0.22);
+    color: var(--text-muted);
+}
+
+.flag-badge--none {
+    color: var(--text-muted);
+    background: transparent;
+}
+
 /* --- History filters bar --- */
 .filters {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 16px;
-    align-items: flex-end;
     margin-bottom: 20px;
     padding: 16px 20px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
+}
+
+.filters__fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.filters__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 4px;
+    border-top: 1px solid var(--panel-border);
 }
 
 .filters__group {
@@ -371,6 +431,13 @@ body {
     font-family: var(--font-display);
 }
 
+/* Native date-picker calendar icon is dark by default and nearly invisible
+   on the dark theme - invert it so it's actually visible/clickable. */
+.filters__group input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
 .filters__group--search input {
     min-width: 220px;
 }
@@ -389,15 +456,6 @@ body {
 
 .filters__apply:hover {
     opacity: 0.85;
-}
-
-.filters__group--checkbox label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text);
-    white-space: nowrap;
 }
 
 .filters__reset {
@@ -435,12 +493,30 @@ body {
     color: var(--accent);
 }
 
+/* --- Activity detail: "Back to History" link, clearly separated from the row below --- */
+.detail-topline {
+    margin: 8px 0 4px;
+}
+
+.back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: color 0.15s ease;
+}
+
+.back-link:hover {
+    color: var(--text);
+}
+
 /* --- Activity detail: prev/next + camera/time header --- */
 .detail-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 12px 0 4px;
+    margin: 4px 0 4px;
 }
 
 .detail-nav {
@@ -485,24 +561,25 @@ body {
     color: var(--text-muted);
 }
 
-/* --- Activity detail: left panel / image / right panel ---
-   Side panels are a fixed narrower width so the image dominates the row. */
+/* --- Activity detail: left panel / image / right column ---
+   Side panels are a fixed narrower width so the image dominates the row.
+   The right column holds BOTH the info panel and the review form, stacked. */
 .detail-body {
     display: grid;
-    grid-template-columns: minmax(220px, 280px) 1fr minmax(220px, 280px);
-    gap: 24px;
+    grid-template-columns: minmax(220px, 280px) 1fr minmax(240px, 300px);
+    gap: 20px;
     align-items: start;
-    margin-top: 16px;
+    margin-top: 12px;
 }
 
 .detail-side {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-    padding: 18px;
+    padding: 16px;
 }
 
 .field-row {
@@ -520,44 +597,48 @@ body {
 }
 
 .field-row__value {
-    font-size: 14px;
+    font-size: 13px;
     word-break: break-word;
 }
 
-/* --- Review panel (mark to discuss / mark OCR wrong / comment) --- */
+/* The right column stacks the info panel + review form vertically */
+.detail-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+}
+
+/* --- Review panel (marked for discussion / system error / comment) ---
+   Narrower column now, so labels stack above their controls instead of
+   sitting side by side. */
 .review-panel {
-    margin-top: 28px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-    padding: 20px;
+    padding: 14px 16px;
 }
 
 .review-form {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    align-items: flex-start;
+    gap: 12px;
+    align-items: stretch;
 }
 
 .review-group {
     display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-    width: 100%;
-}
-
-.review-group--comment {
     flex-direction: column;
-    align-items: stretch;
+    gap: 6px;
+    width: 100%;
 }
 
 .review-group__label {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
-    min-width: 220px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .toggle-buttons {
@@ -568,7 +649,7 @@ body {
 .toggle-buttons__option {
     border: 1px solid var(--panel-border);
     border-radius: 6px;
-    padding: 6px 16px;
+    padding: 5px 14px;
     font-size: 13px;
     cursor: pointer;
     transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
@@ -589,10 +670,11 @@ body {
     border: 1px solid var(--panel-border);
     color: var(--text);
     border-radius: 6px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     font-family: var(--font-display);
     font-size: 13px;
     resize: vertical;
+    width: 100%;
 }
 
 /* Stack the 3-column detail layout on narrower screens */
@@ -600,6 +682,54 @@ body {
     .detail-body {
         grid-template-columns: 1fr;
     }
+}
+
+/* --- Fit-to-screen page (Activity Details only) - no page-level scrolling.
+   Header/back-link/prev-next row take their natural height; the detail-body
+   row consumes exactly whatever's left via flex, so nothing overflows the
+   viewport (History and other pages are unaffected - they still scroll
+   normally, since this only applies when body has this class). --- */
+body.page-fit-screen {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.page-fit-screen .content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 12px;
+}
+
+body.page-fit-screen .detail-body {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+}
+
+body.page-fit-screen .detail-side,
+body.page-fit-screen .detail-right-column {
+    overflow-y: auto; /* safety net only - shouldn't be needed with normal data */
+}
+
+body.page-fit-screen .detail-image {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+body.page-fit-screen .zoom-container {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
+body.page-fit-screen .footer {
+    display: none; /* footer would push content past the viewport - hide it here only */
 }
 
 /* --- View Details button in the table --- */

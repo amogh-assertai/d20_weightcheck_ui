@@ -19,72 +19,83 @@
 </section>
 
 <form method="get" action="{{ url_for('main.history') }}" class="filters">
-    <div class="filters__group">
-        <label for="table">Table</label>
-        <select name="table" id="table">
-            <option value="all" {% if selected_table == 'all' %}selected{% endif %}>All tables</option>
-            {% for cam in camera_options %}
-            <option value="{{ cam }}" {% if selected_table == cam %}selected{% endif %}>{{ cam }}</option>
-            {% endfor %}
-        </select>
+    <div class="filters__fields">
+        <div class="filters__group">
+            <label for="table">Table</label>
+            <select name="table" id="table">
+                <option value="all" {% if selected_table == 'all' %}selected{% endif %}>All tables</option>
+                {% for cam in camera_options %}
+                <option value="{{ cam }}" {% if selected_table == cam %}selected{% endif %}>{{ cam }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filters__group">
+            <label for="start_date">From</label>
+            <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
+        </div>
+
+        <div class="filters__group">
+            <label for="end_date">To</label>
+            <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
+        </div>
+
+        <div class="filters__group">
+            <label for="result">Result</label>
+            <select name="result" id="result">
+                <option value="all" {% if selected_result == 'all' %}selected{% endif %}>All results</option>
+                <option value="PASS" {% if selected_result == 'PASS' %}selected{% endif %}>PASS</option>
+                <option value="FAIL" {% if selected_result == 'FAIL' %}selected{% endif %}>FAIL</option>
+                <option value="MISSING_DATA" {% if selected_result == 'MISSING_DATA' %}selected{% endif %}>MISSING_DATA</option>
+            </select>
+        </div>
+
+        <div class="filters__group filters__group--search">
+            <label for="search">Search (Order # / Activity #)</label>
+            <input type="text" name="search" id="search" placeholder="e.g. E0843867 or 42" value="{{ search_term }}">
+        </div>
+
+        <div class="filters__group">
+            <label for="discuss">Marked for discussion</label>
+            <select name="discuss" id="discuss">
+                <option value="all" {% if selected_discuss == 'all' %}selected{% endif %}>All</option>
+                <option value="YES" {% if selected_discuss == 'YES' %}selected{% endif %}>Yes</option>
+                <option value="NO" {% if selected_discuss == 'NO' %}selected{% endif %}>No</option>
+            </select>
+        </div>
+
+        <div class="filters__group">
+            <label for="ocr_wrong">System error</label>
+            <select name="ocr_wrong" id="ocr_wrong">
+                <option value="all" {% if selected_ocr_wrong == 'all' %}selected{% endif %}>All</option>
+                <option value="YES" {% if selected_ocr_wrong == 'YES' %}selected{% endif %}>Yes</option>
+                <option value="NO" {% if selected_ocr_wrong == 'NO' %}selected{% endif %}>No</option>
+            </select>
+        </div>
+
+        <div class="filters__group">
+            <label for="has_comment">Comment</label>
+            <select name="has_comment" id="has_comment">
+                <option value="all" {% if selected_has_comment == 'all' %}selected{% endif %}>All</option>
+                <option value="present" {% if selected_has_comment == 'present' %}selected{% endif %}>Present</option>
+                <option value="absent" {% if selected_has_comment == 'absent' %}selected{% endif %}>Not present</option>
+            </select>
+        </div>
+
+        <div class="filters__group">
+            <label for="per_page">Records per page</label>
+            <select name="per_page" id="per_page">
+                {% for n in allowed_per_page %}
+                <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
 
-    <div class="filters__group">
-        <label for="start_date">From</label>
-        <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
+    <div class="filters__actions">
+        <button type="submit" class="filters__apply">Apply Filters</button>
+        <a href="{{ url_for('main.history') }}" class="filters__reset">Reset Filters</a>
     </div>
-
-    <div class="filters__group">
-        <label for="end_date">To</label>
-        <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
-    </div>
-
-    <div class="filters__group">
-        <label for="result">Result</label>
-        <select name="result" id="result">
-            <option value="all" {% if selected_result == 'all' %}selected{% endif %}>All results</option>
-            <option value="PASS" {% if selected_result == 'PASS' %}selected{% endif %}>PASS</option>
-            <option value="FAIL" {% if selected_result == 'FAIL' %}selected{% endif %}>FAIL</option>
-        </select>
-    </div>
-
-    <div class="filters__group filters__group--search">
-        <label for="search">Search (Order # / Activity #)</label>
-        <input type="text" name="search" id="search" placeholder="e.g. E0843867 or 42" value="{{ search_term }}">
-    </div>
-
-    <div class="filters__group filters__group--checkbox">
-        <label>
-            <input type="checkbox" name="discuss" value="1" {% if discuss_only %}checked{% endif %}>
-            Marked for discussion
-        </label>
-    </div>
-
-    <div class="filters__group filters__group--checkbox">
-        <label>
-            <input type="checkbox" name="ocr_wrong" value="1" {% if ocr_wrong_only %}checked{% endif %}>
-            OCR wrong marked
-        </label>
-    </div>
-
-    <div class="filters__group filters__group--checkbox">
-        <label>
-            <input type="checkbox" name="has_comment" value="1" {% if has_comment_only %}checked{% endif %}>
-            Has comment
-        </label>
-    </div>
-
-    <div class="filters__group">
-        <label for="per_page">Records per page</label>
-        <select name="per_page" id="per_page">
-            {% for n in allowed_per_page %}
-            <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
-            {% endfor %}
-        </select>
-    </div>
-
-    <button type="submit" class="filters__apply">Apply</button>
-    <a href="{{ url_for('main.history') }}" class="filters__reset">Reset</a>
 </form>
 
 {% if error %}
@@ -117,6 +128,7 @@
                     <th>{{ sort_link('actual_weight', 'Actual Wt', selected_sort, selected_order) }}</th>
                     <th>{{ sort_link('weight_difference_percent', 'Diff %', selected_sort, selected_order) }}</th>
                     <th>{{ sort_link('validation_result', 'Result', selected_sort, selected_order) }}</th>
+                    <th>Flags</th>
                     <th></th>
                 </tr>
             </thead>
@@ -124,6 +136,9 @@
                 {% for a in activities %}
                 {% set matching = a.get('order_number_matching', '--') %}
                 {% set result = a.get('validation_result', 'MISSING') %}
+                {% set is_discuss = a.get('mark_discuss') == 'YES' %}
+                {% set is_error = a.get('mark_ocr_wrong') == 'YES' %}
+                {% set has_comment = a.get('review_comment') %}
                 <tr>
                     <td>{{ a.get('timestamp_display', '-') }}</td>
                     <td>{{ a.get('camera_name', '-') }}</td>
@@ -141,6 +156,12 @@
                         <span class="badge badge--{{ 'pass' if result == 'PASS' else 'fail' if result == 'FAIL' else 'warn' if result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">
                             {{ result }}
                         </span>
+                    </td>
+                    <td class="flags-cell">
+                        {% if is_discuss %}<span class="flag-badge flag-badge--discuss" title="Marked for discussion">D</span>{% endif %}
+                        {% if is_error %}<span class="flag-badge flag-badge--error" title="System error">E</span>{% endif %}
+                        {% if has_comment %}<span class="flag-badge flag-badge--comment" title="Has comment">C</span>{% endif %}
+                        {% if not (is_discuss or is_error or has_comment) %}<span class="flag-badge flag-badge--none">&mdash;</span>{% endif %}
                     </td>
                     <td>
                         <a href="{{ url_for('main.activity_detail', activity_id=a.get('_id')) }}?{{ request.query_string.decode() }}" class="btn-view">View Details</a>

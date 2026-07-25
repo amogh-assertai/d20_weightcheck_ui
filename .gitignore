@@ -9,7 +9,7 @@ __pycache__/
 venv/
 .venv/
 env/
-
+server_related/
 # --- Environment / secrets ---
 .env
 .env.local

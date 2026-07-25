@@ -21,11 +21,19 @@
     </script>
     {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <header class="topbar">
-        <div class="topbar__brand">
-            <span class="topbar__dot"></span>
-            <span class="topbar__client">{{ client_name }}</span>
+        <div class="topbar__left">
+            <div class="topbar__brand">
+                <span class="topbar__dot"></span>
+                <span class="topbar__client">{{ client_name }}</span>
+            </div>
+            <nav class="navbar">
+                <a href="{{ url_for('main.home') }}" class="navbar__link{% if request.endpoint == 'main.home' %} is-active{% endif %}">Home</a>
+                <a href="{{ url_for('main.live_monitoring') }}" class="navbar__link{% if request.endpoint == 'main.live_monitoring' %} is-active{% endif %}">Live Monitoring</a>
+                <a href="{{ url_for('main.settings') }}" class="navbar__link{% if request.endpoint == 'main.settings' %} is-active{% endif %}">Settings</a>
+                <a href="{{ url_for('main.history') }}" class="navbar__link{% if request.endpoint == 'main.history' %} is-active{% endif %}">History</a>
+            </nav>
         </div>
         <div class="topbar__right">
             <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark theme">
@@ -34,13 +42,6 @@
             </button>
         </div>
     </header>
-
-    <nav class="navbar">
-        <a href="{{ url_for('main.home') }}" class="navbar__link{% if request.endpoint == 'main.home' %} is-active{% endif %}">Home</a>
-        <a href="{{ url_for('main.live_monitoring') }}" class="navbar__link{% if request.endpoint == 'main.live_monitoring' %} is-active{% endif %}">Live Monitoring</a>
-        <a href="{{ url_for('main.settings') }}" class="navbar__link{% if request.endpoint == 'main.settings' %} is-active{% endif %}">Settings</a>
-        <a href="{{ url_for('main.history') }}" class="navbar__link{% if request.endpoint == 'main.history' %} is-active{% endif %}">History</a>
-    </nav>
 
     <main class="content">
         {% block content %}{% endblock %}

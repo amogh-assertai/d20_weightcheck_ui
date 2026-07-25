@@ -74,9 +74,9 @@ def _query_activities(db):
     table_filter = request.args.get("table", "all")
     result_filter = request.args.get("result", "all")
     search_term = request.args.get("search", "").strip()
-    ocr_wrong_only = request.args.get("ocr_wrong") == "1"
-    has_comment_only = request.args.get("has_comment") == "1"
-    discuss_only = request.args.get("discuss") == "1"
+    ocr_wrong_filter = request.args.get("ocr_wrong", "all")   # "all" / "YES" / "NO"
+    discuss_filter = request.args.get("discuss", "all")       # "all" / "YES" / "NO"
+    has_comment_filter = request.args.get("has_comment", "all")  # "all" / "present" / "absent"
     sort_field = request.args.get("sort", "timestamp")
     sort_order = request.args.get("order", "desc")
 
@@ -109,12 +109,18 @@ def _query_activities(db):
             mongo_query["camera_name"] = table_filter
         if result_filter != "all":
             mongo_query["validation_result"] = result_filter
-        if ocr_wrong_only:
-            mongo_query["mark_ocr_wrong"] = "YES"
-        if has_comment_only:
+        if ocr_wrong_filter in ("YES", "NO"):
+            mongo_query["mark_ocr_wrong"] = ocr_wrong_filter
+        if discuss_filter in ("YES", "NO"):
+            mongo_query["mark_discuss"] = discuss_filter
+        if has_comment_filter == "present":
             mongo_query["review_comment"] = {"$exists": True, "$nin": ["", None]}
-        if discuss_only:
-            mongo_query["mark_discuss"] = "YES"
+        elif has_comment_filter == "absent":
+            mongo_query["$or"] = [
+                {"review_comment": {"$exists": False}},
+                {"review_comment": ""},
+                {"review_comment": None},
+            ]
 
         all_matching = list(db["all_activities"].find(mongo_query))
 
@@ -140,9 +146,9 @@ def _query_activities(db):
         "selected_table": table_filter,
         "selected_result": result_filter,
         "search_term": search_term,
-        "ocr_wrong_only": ocr_wrong_only,
-        "has_comment_only": has_comment_only,
-        "discuss_only": discuss_only,
+        "selected_ocr_wrong": ocr_wrong_filter,
+        "selected_has_comment": has_comment_filter,
+        "selected_discuss": discuss_filter,
         "selected_sort": sort_field,
         "selected_order": sort_order,
         "start_date": start_date_str,
