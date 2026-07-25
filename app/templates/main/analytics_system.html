@@ -68,23 +68,46 @@
         <h2>Camera-wise distribution</h2>
         <span class="panel__hint">{{ camera_distribution|length }} camera(s)</span>
     </div>
-    <div class="bar-chart">
-        {% for cam, count in camera_distribution %}
-        <div class="bar-row">
-            <span class="bar-row__label">{{ cam }}</span>
-            <div class="bar-row__track">
-                <div class="bar-row__fill" style="width: {{ (count / max_camera_count * 100) if max_camera_count else 0 }}%;"></div>
+
+    <div class="camera-legend">
+        <span class="legend-item"><span class="legend-dot legend-dot--pass"></span>PASS</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--fail"></span>FAIL</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--warn"></span>MISSING_DATA</span>
+    </div>
+
+    <div class="camera-stat-grid">
+        {% for cam, stats in camera_distribution %}
+        {% set pass_pct_cam = (stats.pass / stats.total * 100) if stats.total else 0 %}
+        {% set fail_pct_cam = (stats.fail / stats.total * 100) if stats.total else 0 %}
+        {% set missing_pct_cam = (stats.missing / stats.total * 100) if stats.total else 0 %}
+        <div class="camera-stat-card">
+            <div class="camera-stat-card__header">
+                <span class="camera-stat-card__name">{{ cam }}</span>
+                <span class="camera-stat-card__total">{{ stats.total }} total</span>
             </div>
-            <span class="bar-row__value">{{ count }} ({{ '%.1f'|format(count / total_count * 100) if total_count else 0 }}%)</span>
+
+            <div class="stacked-bar">
+                {% if stats.pass %}<div class="stacked-bar__seg stacked-bar__seg--pass" style="width: {{ pass_pct_cam }}%;" title="PASS: {{ stats.pass }}"></div>{% endif %}
+                {% if stats.fail %}<div class="stacked-bar__seg stacked-bar__seg--fail" style="width: {{ fail_pct_cam }}%;" title="FAIL: {{ stats.fail }}"></div>{% endif %}
+                {% if stats.missing %}<div class="stacked-bar__seg stacked-bar__seg--warn" style="width: {{ missing_pct_cam }}%;" title="MISSING_DATA: {{ stats.missing }}"></div>{% endif %}
+                {% if stats.other %}<div class="stacked-bar__seg stacked-bar__seg--muted" style="width: {{ (stats.other / stats.total * 100) if stats.total else 0 }}%;" title="Other: {{ stats.other }}"></div>{% endif %}
+            </div>
+
+            <div class="camera-stat-card__breakdown">
+                <span class="breakdown-item breakdown-item--pass">{{ stats.pass }} PASS &middot; {{ '%.1f'|format(pass_pct_cam) }}%</span>
+                <span class="breakdown-item breakdown-item--fail">{{ stats.fail }} FAIL &middot; {{ '%.1f'|format(fail_pct_cam) }}%</span>
+                <span class="breakdown-item breakdown-item--warn">{{ stats.missing }} MISSING_DATA &middot; {{ '%.1f'|format(missing_pct_cam) }}%</span>
+            </div>
         </div>
         {% endfor %}
     </div>
 </section>
 
 <section class="panel">
+
     <div class="panel__header">
-        <h2>Top 10 highest weight difference</h2>
-        <span class="panel__hint">Within selected date range</span>
+        <h2>Top 5 highest weight difference</h2>
+        <span class="panel__hint">By absolute difference &middot; within selected date range</span>
     </div>
     {% if not top_weight_diff %}
     <p class="panel__hint">No numeric weight-difference data in this range.</p>
@@ -93,12 +116,12 @@
         <table class="data-table">
             <thead>
                 <tr>
+                    <th>Difference</th>
                     <th>Camera</th>
                     <th>Activity #</th>
                     <th>Order #</th>
                     <th>Expected Wt</th>
                     <th>Actual Wt</th>
-                    <th>Difference</th>
                     <th>Diff %</th>
                     <th></th>
                 </tr>
@@ -106,12 +129,12 @@
             <tbody>
                 {% for row in top_weight_diff %}
                 <tr>
+                    <td><strong>{{ row.weight_difference }}</strong></td>
                     <td>{{ row.camera_name }}</td>
                     <td>{{ row.activity_number }}</td>
                     <td>{{ row.order_number }}</td>
                     <td>{{ row.expected_weight }}</td>
                     <td>{{ row.actual_weight }}</td>
-                    <td>{{ row.weight_difference }}</td>
                     <td>{{ row.weight_difference_percent }}</td>
                     <td>
                         <a href="{{ url_for('main.activity_detail', activity_id=row._id) }}?start_date={{ start_date }}&end_date={{ end_date }}" class="btn-view">View Details</a>

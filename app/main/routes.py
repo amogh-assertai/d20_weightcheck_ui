@@ -51,7 +51,7 @@ def _format_timestamp(timestamp_value):
 
 
 def _parse_percent(value):
-    """Parse a percentage-like string (e.g. '24.23%') into a float, or None if not parseable."""
+    """Parse a numeric string, optionally with a trailing '%' (e.g. '24.23%' or '9.800'), into a float. Returns None if not parseable."""
     if value is None:
         return None
     try:
@@ -215,7 +215,6 @@ def analytics_system():
     total_count = 0
     pass_count = fail_count = missing_count = 0
     camera_distribution = []
-    max_camera_count = 0
     top_weight_diff = []
 
     today = datetime.now(timezone.utc).date()
@@ -248,31 +247,42 @@ def analytics_system():
 
             total_count = len(filtered)
 
-            camera_counter = {}
+            # Per-camera breakdown: total + PASS/FAIL/MISSING_DATA/other counts,
+            # so each camera's result composition is visible, not just its volume.
+            camera_stats = {}
             for doc in filtered:
                 cam = doc.get("camera_name", "Unknown")
-                camera_counter[cam] = camera_counter.get(cam, 0) + 1
+                stats = camera_stats.setdefault(
+                    cam, {"total": 0, "pass": 0, "fail": 0, "missing": 0, "other": 0}
+                )
+                stats["total"] += 1
+
                 result = doc.get("validation_result")
                 if result == "PASS":
+                    stats["pass"] += 1
                     pass_count += 1
                 elif result == "FAIL":
+                    stats["fail"] += 1
                     fail_count += 1
                 elif result == "MISSING_DATA":
+                    stats["missing"] += 1
                     missing_count += 1
+                else:
+                    stats["other"] += 1
 
-            camera_distribution = sorted(camera_counter.items(), key=lambda kv: kv[1], reverse=True)
-            max_camera_count = max(camera_counter.values()) if camera_counter else 0
+            camera_distribution = sorted(camera_stats.items(), key=lambda kv: kv[1]["total"], reverse=True)
 
-            # Top 10 highest weight difference % - only among docs where it
-            # actually parses as a number (can't meaningfully rank the rest).
+            # Top 5 highest ABSOLUTE weight difference - only among docs where
+            # weight_difference actually parses as a number (can't meaningfully
+            # rank the rest). Ranked by the raw difference, not the percentage.
             candidates = []
             for doc in filtered:
-                pct = _parse_percent(doc.get("weight_difference_percent"))
-                if pct is not None:
-                    candidates.append((pct, doc))
+                diff = _parse_percent(doc.get("weight_difference"))
+                if diff is not None:
+                    candidates.append((abs(diff), doc))
             candidates.sort(key=lambda t: t[0], reverse=True)
 
-            for pct, doc in candidates[:10]:
+            for diff, doc in candidates[:5]:
                 top_weight_diff.append({
                     "_id": str(doc["_id"]),
                     "camera_name": doc.get("camera_name", "-"),
@@ -303,7 +313,6 @@ def analytics_system():
         "fail_pct": pct_of(fail_count),
         "missing_pct": pct_of(missing_count),
         "camera_distribution": camera_distribution,
-        "max_camera_count": max_camera_count,
         "top_weight_diff": top_weight_diff,
     })
 
