@@ -1,0 +1,51 @@
+name: Deploy D20 Weight Check UI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu/d20_weightcheck_ui
+
+            echo "== Saving current commit for rollback =="
+            PREV_COMMIT=$(git rev-parse HEAD)
+
+            echo "== Pulling latest code =="
+            git fetch origin main
+            git diff HEAD origin/main --name-only > /tmp/changed_files.txt || true
+            git pull origin main
+
+            echo "== Checking if requirements.txt changed =="
+            if grep -q "requirements.txt" /tmp/changed_files.txt; then
+              echo "requirements.txt changed -> installing dependencies (shared venv)"
+              source /home/ubuntu/venv/bin/activate
+              pip install -r requirements.txt
+            else
+              echo "requirements.txt unchanged -> skipping pip install"
+            fi
+
+            echo "== Restarting service =="
+            sudo systemctl restart d20-weightcheck-ui.service
+            sleep 3
+
+            echo "== Health check =="
+            if curl -fs http://127.0.0.1:6001/health > /dev/null; then
+              echo "✅ Deploy successful, app is healthy"
+            else
+              echo "❌ Health check failed, rolling back to $PREV_COMMIT"
+              git reset --hard $PREV_COMMIT
+              sudo systemctl restart d20-weightcheck-ui.service
+              echo "Rollback complete. Reverted to $PREV_COMMIT"
+              exit 1
+            fi
