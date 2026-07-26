@@ -117,6 +117,44 @@
     </div>
     <div class="table-wrap">
         <table class="data-table">
+            {% if selected_has_comment == 'present' %}
+            <thead>
+                <tr>
+                    <th>{{ sort_link('timestamp', 'Date / Time', selected_sort, selected_order) }}</th>
+                    <th>{{ sort_link('activity_number', 'Activity #', selected_sort, selected_order) }}</th>
+                    <th>Order Match</th>
+                    <th>{{ sort_link('weight_difference_percent', 'Diff %', selected_sort, selected_order) }}</th>
+                    <th>{{ sort_link('validation_result', 'Result', selected_sort, selected_order) }}</th>
+                    <th class="comment-header">Comment</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in activities %}
+                {% set matching = a.get('order_number_matching', '--') %}
+                {% set result = a.get('validation_result', 'MISSING') %}
+                <tr>
+                    <td>{{ a.get('timestamp_display', '-') }}</td>
+                    <td>{{ a.get('activity_number', '-') }}</td>
+                    <td>
+                        <span class="badge badge--{{ 'pass' if matching == 'YES' else 'fail' if matching == 'NO' else 'muted' }}">
+                            {{ matching }}
+                        </span>
+                    </td>
+                    <td>{{ a.get('weight_difference_percent', '-') }}</td>
+                    <td>
+                        <span class="badge badge--{{ 'pass' if result == 'PASS' else 'fail' if result == 'FAIL' else 'warn' if result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">
+                            {{ result }}
+                        </span>
+                    </td>
+                    <td class="comment-cell-wide">{{ a.get('review_comment', '') }}</td>
+                    <td>
+                        <a href="{{ url_for('main.activity_detail', activity_id=a.get('_id')) }}?{{ request.query_string.decode() }}" class="btn-view">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% else %}
             <thead>
                 <tr>
                     <th>{{ sort_link('timestamp', 'Date / Time', selected_sort, selected_order) }}</th>
@@ -169,6 +207,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
+            {% endif %}
         </table>
     </div>
 

@@ -344,6 +344,20 @@ body {
     white-space: nowrap;
 }
 
+/* Comment view: reduced column set (Date/Activity#/Order Match/Diff%/Result)
+   frees up space for a wide, readable comment column - full text wraps,
+   no truncation needed since there's room now. */
+.comment-header {
+    width: 40%;
+}
+
+.comment-cell-wide {
+    white-space: normal;
+    line-height: 1.4;
+    max-width: 0; /* forces the column to respect its % width instead of growing to fit content */
+    width: 40%;
+}
+
 .flag-badge {
     display: inline-flex;
     align-items: center;
