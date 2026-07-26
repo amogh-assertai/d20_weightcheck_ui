@@ -186,6 +186,10 @@ def live_monitoring():
         current_app.logger.error(f"Error rendering live monitoring page: {e}")
         return "Something went wrong loading live monitoring.", 500
 
+@main_bp.route("/health")
+def health():
+    return "OK", 200
+
 
 @main_bp.route("/settings")
 def settings():
