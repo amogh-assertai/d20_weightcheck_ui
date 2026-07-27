@@ -35,3 +35,14 @@
         });
     }
 })();
+
+// Auto-dismiss flash messages (e.g. "Review saved.") after a few seconds.
+(function () {
+    document.querySelectorAll('.flash-message').forEach(function (el) {
+        setTimeout(function () {
+            el.style.transition = 'opacity 0.3s ease';
+            el.style.opacity = '0';
+            setTimeout(function () { el.remove(); }, 300);
+        }, 3000);
+    });
+})();

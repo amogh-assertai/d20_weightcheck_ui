@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client_name }} · Not Found{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <h1>Page not found</h1>
+    <p class="error-page__body">
+        The page you're looking for doesn't exist, or the link may be out of date.
+    </p>
+    <div class="error-page__actions">
+        <button type="button" class="filters__apply" onclick="location.reload()">Refresh</button>
+        <a href="{{ url_for('main.home') }}" class="filters__reset">Go Home</a>
+    </div>
+</section>
+{% endblock %}

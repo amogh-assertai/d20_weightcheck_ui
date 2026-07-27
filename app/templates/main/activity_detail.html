@@ -133,6 +133,18 @@
                     </div>
                 </div>
 
+                <div class="review-group">
+                    <span class="review-group__label">Process error</span>
+                    <div class="toggle-buttons">
+                        <label class="toggle-buttons__option{% if activity.get('mark_process_error') == 'YES' %} is-selected{% endif %}">
+                            <input type="radio" name="mark_process_error" value="YES" {% if activity.get('mark_process_error') == 'YES' %}checked{% endif %}> Yes
+                        </label>
+                        <label class="toggle-buttons__option{% if activity.get('mark_process_error') == 'NO' %} is-selected{% endif %}">
+                            <input type="radio" name="mark_process_error" value="NO" {% if activity.get('mark_process_error') == 'NO' %}checked{% endif %}> No
+                        </label>
+                    </div>
+                </div>
+
                 <div class="review-group review-group--comment">
                     <label class="review-group__label" for="review_comment">Comment</label>
                     <textarea name="review_comment" id="review_comment" rows="8" placeholder="Write any comment...">{{ activity.get('review_comment', '') }}</textarea>

@@ -6,10 +6,10 @@ Activity Details (with prev/next + review form), and evidence-image serving.
 """
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from flask import (
-    Blueprint, render_template, current_app, request, send_from_directory, url_for, redirect
+    Blueprint, render_template, current_app, request, send_from_directory, url_for, redirect, flash
 )
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -91,7 +91,7 @@ def _query_activities(db):
     sort_order = request.args.get("order", "desc")
 
     today = datetime.now(timezone.utc).date()
-    default_start = today - timedelta(days=1)
+    default_start = today
     start_date_str = request.args.get("start_date", default_start.isoformat())
     end_date_str = request.args.get("end_date", today.isoformat())
 
@@ -186,8 +186,10 @@ def live_monitoring():
         current_app.logger.error(f"Error rendering live monitoring page: {e}")
         return "Something went wrong loading live monitoring.", 500
 
+
 @main_bp.route("/health")
 def health():
+    """Health check endpoint for CI/CD and uptime monitoring."""
     return "OK", 200
 
 
@@ -472,10 +474,11 @@ def activity_detail(activity_id):
 @main_bp.route("/history/activity/<activity_id>/review", methods=["POST"])
 def save_activity_review(activity_id):
     """
-    Save the 3 review fields for one activity: mark_discuss (YES/NO/untouched),
-    mark_ocr_wrong (YES/NO/untouched), review_comment (free text).
-    result_reviewed = True if ANY of the 3 has been touched (including an explicit
-    "NO"), False only if all 3 are still untouched/empty.
+    Save the 4 review fields for one activity: mark_discuss (YES/NO/untouched),
+    mark_ocr_wrong "System error" (YES/NO/untouched), mark_process_error
+    "Process error" (YES/NO/untouched), review_comment (free text).
+    result_reviewed = True if ANY of the 4 has been touched (including an explicit
+    "NO"), False only if all 4 are still untouched/empty.
     """
     db = current_app.extensions.get("mongo_db")
     if db is None:
@@ -486,24 +489,27 @@ def save_activity_review(activity_id):
     except InvalidId:
         return "Activity not found.", 404
 
-    mark_discuss = request.form.get("mark_discuss") or None       # "YES" / "NO" / None (untouched)
-    mark_ocr_wrong = request.form.get("mark_ocr_wrong") or None   # "YES" / "NO" / None (untouched)
+    mark_discuss = request.form.get("mark_discuss") or None            # "YES" / "NO" / None (untouched)
+    mark_ocr_wrong = request.form.get("mark_ocr_wrong") or None        # "YES" / "NO" / None (untouched)
+    mark_process_error = request.form.get("mark_process_error") or None  # "YES" / "NO" / None (untouched)
     review_comment = request.form.get("review_comment", "").strip()
 
-    result_reviewed = bool(mark_discuss or mark_ocr_wrong or review_comment)
+    result_reviewed = bool(mark_discuss or mark_ocr_wrong or mark_process_error or review_comment)
 
     update_fields = {
         "mark_discuss": mark_discuss,
         "mark_ocr_wrong": mark_ocr_wrong,
+        "mark_process_error": mark_process_error,
         "review_comment": review_comment,
         "result_reviewed": result_reviewed,
     }
 
     try:
         db["all_activities"].update_one({"_id": obj_id}, {"$set": update_fields})
+        flash("Review saved.", "success")
     except Exception as e:
         current_app.logger.error(f"Failed to save review for activity '{activity_id}': {e}")
-        return "Failed to save review.", 500
+        flash("Failed to save review - please try again.", "error")
 
     # Redirect back to the same detail page, preserving whatever filter/sort
     # query string was active (passed through as a hidden form field).

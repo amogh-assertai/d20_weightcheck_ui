@@ -10,7 +10,7 @@ without touching any other file.
 """
 
 import os
-from flask import Flask
+from flask import Flask, render_template, current_app
 from app.config import Config
 from app.utils.logger import setup_logger
 from app.extensions import init_mongo
@@ -32,6 +32,28 @@ def create_app(config_class=Config):
 
     from app.api.routes import api_bp
     app.register_blueprint(api_bp, url_prefix="/api")
+
+    # --- Error pages ---
+    # Note: these only render when FLASK_DEBUG=False. With debug=True (local dev),
+    # Flask's own interactive debugger takes over instead - that's expected, since
+    # you want full tracebacks while developing. In a real deployment (debug=False),
+    # an unhandled error shows this branded page with a Refresh button instead of a
+    # blank/raw error.
+    def _error_context():
+        return {
+            "app_name": current_app.config.get("APP_NAME", ""),
+            "client_name": current_app.config.get("CLIENT_NAME", ""),
+            "max_clients": current_app.config.get("MAX_CLIENTS", ""),
+        }
+
+    @app.errorhandler(404)
+    def handle_404(e):
+        return render_template("errors/404.html", **_error_context()), 404
+
+    @app.errorhandler(500)
+    def handle_500(e):
+        current_app.logger.error(f"Internal server error: {e}")
+        return render_template("errors/500.html", **_error_context()), 500
 
     # Make sure the upload folder exists. Don't crash the app if it can't be created -
     # just log a warning so the developer notices during setup.

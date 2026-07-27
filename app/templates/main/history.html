@@ -174,8 +174,9 @@
                 {% for a in activities %}
                 {% set matching = a.get('order_number_matching', '--') %}
                 {% set result = a.get('validation_result', 'MISSING') %}
-                {% set is_discuss = a.get('mark_discuss') == 'YES' %}
-                {% set is_error = a.get('mark_ocr_wrong') == 'YES' %}
+                {% set discuss_val = a.get('mark_discuss') %}
+                {% set error_val = a.get('mark_ocr_wrong') %}
+                {% set process_val = a.get('mark_process_error') %}
                 {% set has_comment = a.get('review_comment') %}
                 <tr>
                     <td>{{ a.get('timestamp_display', '-') }}</td>
@@ -196,10 +197,14 @@
                         </span>
                     </td>
                     <td class="flags-cell">
-                        {% if is_discuss %}<span class="flag-badge flag-badge--discuss" title="Marked for discussion">D</span>{% endif %}
-                        {% if is_error %}<span class="flag-badge flag-badge--error" title="System error">E</span>{% endif %}
+                        {% if discuss_val == 'YES' %}<span class="flag-badge flag-badge--discuss" title="Marked for discussion: Yes">D</span>
+                        {% elif discuss_val == 'NO' %}<span class="flag-badge flag-badge--no" title="Marked for discussion: No">D</span>{% endif %}
+                        {% if error_val == 'YES' %}<span class="flag-badge flag-badge--error" title="System error: Yes">E</span>
+                        {% elif error_val == 'NO' %}<span class="flag-badge flag-badge--no" title="System error: No">E</span>{% endif %}
+                        {% if process_val == 'YES' %}<span class="flag-badge flag-badge--process" title="Process error: Yes">P</span>
+                        {% elif process_val == 'NO' %}<span class="flag-badge flag-badge--no" title="Process error: No">P</span>{% endif %}
                         {% if has_comment %}<span class="flag-badge flag-badge--comment" title="Has comment">C</span>{% endif %}
-                        {% if not (is_discuss or is_error or has_comment) %}<span class="flag-badge flag-badge--none">&mdash;</span>{% endif %}
+                        {% if not (discuss_val or error_val or process_val or has_comment) %}<span class="flag-badge flag-badge--none">&mdash;</span>{% endif %}
                     </td>
                     <td>
                         <a href="{{ url_for('main.activity_detail', activity_id=a.get('_id')) }}?{{ request.query_string.decode() }}" class="btn-view">View Details</a>
