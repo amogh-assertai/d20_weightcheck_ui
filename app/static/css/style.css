@@ -175,124 +175,6 @@ body {
     letter-spacing: 0.06em;
 }
 
-/* --- Table section: small left/right inset, 4 cards at the corners --- */
-.table-section {
-    margin-top: 32px;
-    padding: 0 20px;
-}
-
-/* The board is the visible playing surface - a bordered frame with open space
-   in the middle. Cards are pinned to its 4 corners rather than filling a grid.
-   Fixed height (instead of min-height) is needed so the cards below can size
-   themselves as a % of the board without overflowing or needing scroll. */
-.board {
-    position: relative;
-    height: clamp(360px, 62vh, 720px);
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 12px;
-}
-
-.table-card {
-    position: absolute;
-    width: 32%;
-    height: 42%;
-    background: var(--bg);
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 20px 16px;
-    text-align: center;
-    color: var(--text);
-    transition: border-color 0.15s ease, transform 0.15s ease;
-}
-
-.table-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-}
-
-.table-card__datetime {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-}
-
-.table-card__number {
-    font-size: clamp(16px, 1.6vw, 22px);
-    font-weight: 600;
-}
-
-.table-card__body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-
-.table-card__result-label {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-
-.table-card__result-value {
-    font-size: clamp(20px, 2vw, 26px);
-    font-weight: 700;
-    padding: 4px 18px;
-}
-
-.table-card__result--empty {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-.table-card__field {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text);
-}
-
-.table-card__view-btn {
-    margin-top: 4px;
-}
-
-/* Corner placements */
-.table-card--tl { top: 28px; left: 28px; }
-.table-card--tr { top: 28px; right: 28px; }
-.table-card--bl { bottom: 28px; left: 28px; }
-.table-card--br { bottom: 28px; right: 28px; }
-
-/* --- Live-update blink: 5 quick flashes of the WHOLE card (background +
-   border), in the result's color, then settles back to normal. --- */
-@keyframes blink-pass {
-    0%, 100% { background: var(--bg); border-color: var(--panel-border); }
-    50% { background: rgba(18, 199, 133, 0.28); border-color: #12C785; }
-}
-
-@keyframes blink-fail {
-    0%, 100% { background: var(--bg); border-color: var(--panel-border); }
-    50% { background: rgba(232, 68, 68, 0.28); border-color: #E84444; }
-}
-
-@keyframes blink-missing {
-    0%, 100% { background: var(--bg); border-color: var(--panel-border); }
-    50% { background: rgba(240, 165, 45, 0.28); border-color: #F0A52D; }
-}
-
-.table-card--blink-pass { animation: blink-pass 0.3s ease-in-out 5; }
-.table-card--blink-fail { animation: blink-fail 0.3s ease-in-out 5; }
-.table-card--blink-missing { animation: blink-missing 0.3s ease-in-out 5; }
-
 /* --- Generic panel + empty-state (kept for reuse on future pages) --- */
 .panel {
     background: var(--panel);
@@ -319,6 +201,26 @@ body {
 .panel__hint {
     font-size: 12px;
     color: var(--text-muted);
+}
+
+/* --- Settings page form (reuses .filters__group / .toggle-buttons / .filters__apply styling) --- */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: flex-start;
+    max-width: 420px;
+}
+
+.settings-form input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--font-display);
+    width: 120px;
 }
 
 .empty-state {
@@ -1144,26 +1046,10 @@ body.page-fit-screen .footer {
 
 /* --- Responsive --- */
 @media (max-width: 640px) {
-    /* Corner-pinned absolute layout doesn't work on narrow screens - stack instead */
-    .board {
-        height: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        padding: 16px;
-    }
-    .table-card {
-        position: static;
-        width: 100%;
-        height: auto;
-    }
     .topbar {
         padding: 14px 18px;
     }
     .content {
         padding: 20px;
-    }
-    .table-section {
-        padding: 0 8px;
     }
 }

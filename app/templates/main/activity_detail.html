@@ -213,23 +213,6 @@
             if (nextLink) window.location.href = nextLink.href;
         }
     });
-
-    // --- Fix: give instant visual feedback when a Yes/No option is picked ---
-    // (radios already enforce "only one selected" natively via shared 'name';
-    // this just keeps the highlighted-label class in sync with that choice.)
-    document.querySelectorAll('.toggle-buttons').forEach(function (group) {
-        group.querySelectorAll('input[type="radio"]').forEach(function (radio) {
-            radio.addEventListener('change', function () {
-                group.querySelectorAll('.toggle-buttons__option').forEach(function (label) {
-                    label.classList.remove('is-selected');
-                });
-                if (radio.checked) {
-                    var label = radio.closest('.toggle-buttons__option');
-                    if (label) label.classList.add('is-selected');
-                }
-            });
-        });
-    });
 })();
 </script>
 {% endblock %}

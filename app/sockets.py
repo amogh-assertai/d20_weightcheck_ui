@@ -12,13 +12,13 @@ polling delay.
 """
 
 from app.extensions import socketio
-from app.utils.helpers import format_timestamp
+from app.utils.helpers import format_timestamp_12h
 
 
 def broadcast_table_update(table_id, data):
     """Push one table's new data to every connected browser client immediately."""
     payload = dict(data)
-    payload["activity_datetime_display"] = format_timestamp(data.get("activity_datetime"))
+    payload["activity_datetime_display"] = format_timestamp_12h(data.get("activity_datetime"))
     socketio.emit("table_update", {"table_id": table_id, **payload})
 
 

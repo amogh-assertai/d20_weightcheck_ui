@@ -1,0 +1,168 @@
+/* ---------------------------------------------------
+   live_monitoring.css
+   Page-specific styles for the Live Monitoring board.
+   Kept separate from the main stylesheet since this page has grown a lot
+   of its own layout/animation logic (big cards, configurable signal
+   states) that no other page uses.
+--------------------------------------------------- */
+
+/* --- Board section --- */
+.table-section {
+    margin-top: 16px;
+    padding: 0 16px;
+}
+
+/* The board is the visible playing surface - a bordered frame with open
+   space in the middle. Cards are pinned to its 4 corners rather than
+   filling a grid. Default height is vh-based; on the fit-to-screen page
+   (see below) it instead flexes to fill whatever space is left. */
+.board {
+    position: relative;
+    height: clamp(480px, 74vh, 900px);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+}
+
+/* --- Fit-to-screen: board fills remaining vertical space, no page scroll ---
+   (body.page-fit-screen and .content's flex behavior are defined in the
+   main stylesheet; these rules just make THIS page's own elements
+   participate in that layout correctly.) */
+body.page-fit-screen .welcome {
+    padding: 4px 0 2px;
+}
+
+body.page-fit-screen .table-section {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+}
+
+body.page-fit-screen .board {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
+/* --- Table cards: big, centered content, pinned to the board's corners --- */
+.table-card {
+    position: absolute;
+    width: 44%;
+    height: 46%;
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 28px;
+    text-align: center;
+    color: var(--text);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.table-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+.table-card__number {
+    font-size: clamp(26px, 3.2vw, 42px);
+    font-weight: 700;
+}
+
+.table-card__body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.table-card__field {
+    font-family: var(--font-mono);
+    font-size: clamp(16px, 1.7vw, 21px);
+    color: var(--text);
+}
+
+.table-card__field-label {
+    color: var(--text-muted);
+    margin-right: 6px;
+}
+
+.table-card__field--result .badge {
+    font-size: clamp(19px, 2.1vw, 27px);
+    padding: 5px 20px;
+    margin-left: 8px;
+}
+
+.table-card__result--empty {
+    font-family: var(--font-mono);
+    font-size: clamp(15px, 1.6vw, 18px);
+    color: var(--text-muted);
+}
+
+.table-card__view-btn {
+    margin-top: 4px;
+    font-size: 15px;
+    padding: 9px 22px;
+}
+
+/* Corner placements */
+.table-card--tl { top: 24px; left: 24px; }
+.table-card--tr { top: 24px; right: 24px; }
+.table-card--bl { bottom: 24px; left: 24px; }
+.table-card--br { bottom: 24px; right: 24px; }
+
+/* --- Configurable signal states (pattern/duration/retain-color set via
+   Settings page, applied by JS in live_monitoring.html) ---
+   Base .signal--* classes apply a STATIC solid color on their own - used
+   directly for the "solid" pattern, and also what's left showing after a
+   "blink" ends if retain-color is on. .signal-blink layers the flashing
+   animation on top of whichever color class is present. */
+.signal--pass { background: rgba(18, 199, 133, 0.3); border-color: #12C785; }
+.signal--fail { background: rgba(232, 68, 68, 0.3); border-color: #E84444; }
+.signal--warn { background: rgba(240, 165, 45, 0.3); border-color: #F0A52D; }
+.signal--muted { background: var(--bg); border-color: var(--panel-border); }
+
+@keyframes signal-blink-pass {
+    0%, 100% { background: var(--bg); border-color: var(--panel-border); }
+    50% { background: rgba(18, 199, 133, 0.3); border-color: #12C785; }
+}
+
+@keyframes signal-blink-fail {
+    0%, 100% { background: var(--bg); border-color: var(--panel-border); }
+    50% { background: rgba(232, 68, 68, 0.3); border-color: #E84444; }
+}
+
+@keyframes signal-blink-warn {
+    0%, 100% { background: var(--bg); border-color: var(--panel-border); }
+    50% { background: rgba(240, 165, 45, 0.3); border-color: #F0A52D; }
+}
+
+.signal-blink.signal--pass { animation: signal-blink-pass 0.4s ease-in-out infinite; }
+.signal-blink.signal--fail { animation: signal-blink-fail 0.4s ease-in-out infinite; }
+.signal-blink.signal--warn { animation: signal-blink-warn 0.4s ease-in-out infinite; }
+
+/* --- Responsive: corner-pinned absolute layout doesn't work on narrow
+   screens - stack the cards instead --- */
+@media (max-width: 640px) {
+    .board {
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 16px;
+    }
+    .table-card {
+        position: static;
+        width: 100%;
+        height: auto;
+    }
+    .table-section {
+        padding: 0 8px;
+    }
+}

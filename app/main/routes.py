@@ -180,33 +180,40 @@ def live_monitoring():
     latest result as received via the AI device's webhook (see app/live_status.py
     and POST /api/webhook/activity-result)."""
     from app.live_status import get_latest_status
+    from app.settings_store import get_live_signal_settings
+    from app.utils.helpers import format_timestamp_12h
     try:
-        latest_status = get_latest_status(current_app.extensions.get("mongo_db"))
+        db = current_app.extensions.get("mongo_db")
+        latest_status = get_latest_status(db)
         for data in latest_status.values():
             if data:
-                data["activity_datetime_display"] = _format_timestamp(data.get("activity_datetime"))
+                data["activity_datetime_display"] = format_timestamp_12h(data.get("activity_datetime"))
 
         context = _base_context()
         context["latest_status"] = latest_status
         context["live_details_type"] = current_app.config.get("LIVE_DETAILS_TYPE", "new_tab")
+        context["live_signal_settings"] = get_live_signal_settings(db)
         return render_template("main/live_monitoring.html", **context)
     except Exception as e:
         current_app.logger.error(f"Error rendering live monitoring page: {e}")
         return "Something went wrong loading live monitoring.", 500
 
 
+
 @main_bp.route("/live-status")
 def live_status():
     """
-    JSON snapshot of each table's latest data. Polled by the Live Monitoring
-    page every few seconds to pick up new webhook data without a full page
-    reload (see app/live_status.py for how this gets populated).
+    JSON snapshot of each table's latest data - kept as a manual debug/
+    check endpoint (curl-friendly). The Live Monitoring page itself no
+    longer polls this; it gets real-time updates via WebSocket instead
+    (see app/sockets.py).
     """
     from app.live_status import get_latest_status
+    from app.utils.helpers import format_timestamp_12h
     status = get_latest_status(current_app.extensions.get("mongo_db"))
     for data in status.values():
         if data:
-            data["activity_datetime_display"] = _format_timestamp(data.get("activity_datetime"))
+            data["activity_datetime_display"] = format_timestamp_12h(data.get("activity_datetime"))
     return jsonify(status)
 
 
@@ -282,11 +289,38 @@ def health():
     return "OK", 200
 
 
-@main_bp.route("/settings")
+@main_bp.route("/settings", methods=["GET", "POST"])
 def settings():
-    """Settings - placeholder until app-behaviour controls are designed."""
+    """Settings - currently controls the Live Monitoring signal behaviour
+    (blink/solid pattern, duration, whether color is retained after a blink)."""
+    from app.settings_store import get_live_signal_settings, save_live_signal_settings
+
+    db = current_app.extensions.get("mongo_db")
+
+    if request.method == "POST":
+        pattern = request.form.get("pattern", "blink")
+        if pattern not in ("blink", "solid"):
+            pattern = "blink"
+
+        try:
+            duration_sec = float(request.form.get("duration_sec", 5))
+        except (TypeError, ValueError):
+            duration_sec = 5
+        duration_sec = max(1, min(duration_sec, 60))  # sane bounds: 1-60 sec
+
+        retain_color = request.form.get("retain_color") == "on"
+
+        if save_live_signal_settings(db, pattern, duration_sec, retain_color):
+            flash("Settings saved.", "success")
+        else:
+            flash("Could not save settings - database unavailable.", "error")
+
+        return redirect(url_for("main.settings"))
+
     try:
-        return render_template("main/settings.html", **_base_context())
+        context = _base_context()
+        context["live_signal_settings"] = get_live_signal_settings(db)
+        return render_template("main/settings.html", **context)
     except Exception as e:
         current_app.logger.error(f"Error rendering settings page: {e}")
         return "Something went wrong loading settings.", 500

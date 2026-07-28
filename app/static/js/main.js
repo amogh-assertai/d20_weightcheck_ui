@@ -46,3 +46,24 @@
         }, 3000);
     });
 })();
+
+// Toggle-buttons (Yes/No style radio groups): give instant visual feedback
+// when an option is picked. Radios already enforce "only one selected"
+// natively via shared 'name'; this just keeps the highlighted-label class
+// in sync. Global so any page using .toggle-buttons gets this for free
+// (Activity Details review form, Settings page pattern picker, etc.)
+(function () {
+    document.querySelectorAll('.toggle-buttons').forEach(function (group) {
+        group.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                group.querySelectorAll('.toggle-buttons__option').forEach(function (label) {
+                    label.classList.remove('is-selected');
+                });
+                if (radio.checked) {
+                    var label = radio.closest('.toggle-buttons__option');
+                    if (label) label.classList.add('is-selected');
+                }
+            });
+        });
+    });
+})();

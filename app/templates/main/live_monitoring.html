@@ -2,17 +2,23 @@
 
 {% block title %}{{ client_name }} · Live Monitoring{% endblock %}
 
-{% macro table_card(table_id, corner_class, data, live_details_type) %}
-<div class="table-card {{ corner_class }}" data-table-id="{{ table_id }}">
-    <span class="table-card__datetime">{{ data.activity_datetime_display if data else '' }}</span>
+{% block body_class %}page-fit-screen{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/live_monitoring.css') }}">
+{% endblock %}
+
+{% macro table_card(table_id, corner_class, data, live_details_type, retain_color) %}
+{% set signal_class = 'signal--' + ('pass' if data.result == 'PASS' else 'fail' if data.result == 'FAIL' else 'warn' if data.result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted') if (data and retain_color) else '' %}
+<div class="table-card {{ corner_class }} {{ signal_class }}" data-table-id="{{ table_id }}">
     <span class="table-card__number">Table {{ table_id.split('_')[1] }}</span>
 
     <div class="table-card__body">
         {% if data %}
-        <span class="table-card__result-label">RESULT</span>
-        <span class="table-card__result-value badge badge--{{ 'pass' if data.result == 'PASS' else 'fail' if data.result == 'FAIL' else 'warn' if data.result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">{{ data.result }}</span>
-        <span class="table-card__field">Activity Number: {{ data.activity_number }}</span>
-        <span class="table-card__field">Order #: {{ data.order_number }}</span>
+        <span class="table-card__field"><span class="table-card__field-label">Activity Number:</span> {{ data.activity_number }}</span>
+        <span class="table-card__field table-card__field--result"><span class="table-card__field-label">RESULT:</span> <span class="badge badge--{{ 'pass' if data.result == 'PASS' else 'fail' if data.result == 'FAIL' else 'warn' if data.result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">{{ data.result }}</span></span>
+        <span class="table-card__field"><span class="table-card__field-label">Order #:</span> {{ data.order_number }}</span>
+        <span class="table-card__field"><span class="table-card__field-label">Datetime:</span> {{ data.activity_datetime_display }}</span>
         {% else %}
         <span class="table-card__result--empty">No data yet</span>
         {% endif %}
@@ -37,10 +43,11 @@
 
 <section class="table-section">
     <div class="board">
-        {{ table_card('table_1', 'table-card--tl', latest_status.get('table_1'), live_details_type) }}
-        {{ table_card('table_2', 'table-card--tr', latest_status.get('table_2'), live_details_type) }}
-        {{ table_card('table_3', 'table-card--bl', latest_status.get('table_3'), live_details_type) }}
-        {{ table_card('table_4', 'table-card--br', latest_status.get('table_4'), live_details_type) }}
+        {# Layout: left-top = table 3, left-bottom = table 4, right-top = table 1, right-bottom = table 2 #}
+        {{ table_card('table_3', 'table-card--tl', latest_status.get('table_3'), live_details_type, live_signal_settings.retain_color) }}
+        {{ table_card('table_1', 'table-card--tr', latest_status.get('table_1'), live_details_type, live_signal_settings.retain_color) }}
+        {{ table_card('table_4', 'table-card--bl', latest_status.get('table_4'), live_details_type, live_signal_settings.retain_color) }}
+        {{ table_card('table_2', 'table-card--br', latest_status.get('table_2'), live_details_type, live_signal_settings.retain_color) }}
     </div>
 </section>
 {% endblock %}
@@ -49,17 +56,52 @@
 <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
 <script>
 (function () {
-    function blinkClassFor(result) {
-        if (result === 'PASS') return 'table-card--blink-pass';
-        if (result === 'FAIL') return 'table-card--blink-fail';
-        return 'table-card--blink-missing'; // MISSING_DATA and anything else -> yellow
-    }
+    var SIGNAL_PATTERN = {{ live_signal_settings.pattern | tojson }};
+    var SIGNAL_DURATION_MS = {{ (live_signal_settings.duration_sec * 1000) | int }};
+    var SIGNAL_RETAIN_COLOR = {{ 'true' if live_signal_settings.retain_color else 'false' }};
 
     function badgeClassFor(result) {
         if (result === 'PASS') return 'pass';
         if (result === 'FAIL') return 'fail';
         if (result === 'MISSING_DATA' || result === 'INVALID_WEIGHT_DATA') return 'warn';
         return 'muted';
+    }
+
+    function signalColorClassFor(result) {
+        return 'signal--' + badgeClassFor(result);
+    }
+
+    function clearSignal(card) {
+        if (card._signalTimer) {
+            clearTimeout(card._signalTimer);
+            card._signalTimer = null;
+        }
+        card.classList.remove('signal-blink', 'signal--pass', 'signal--fail', 'signal--warn', 'signal--muted');
+    }
+
+    // Configurable per Settings: blink (repeating flash) or solid (steady
+    // color) for SIGNAL_DURATION_MS, then either revert to neutral or keep
+    // the color showing - SIGNAL_RETAIN_COLOR now applies to BOTH patterns.
+    function applySignal(card, result) {
+        clearSignal(card);
+        var colorClass = signalColorClassFor(result);
+
+        if (SIGNAL_PATTERN === 'solid') {
+            card.classList.add(colorClass);
+            card._signalTimer = setTimeout(function () {
+                if (!SIGNAL_RETAIN_COLOR) {
+                    card.classList.remove(colorClass);
+                }
+            }, SIGNAL_DURATION_MS);
+        } else {
+            card.classList.add('signal-blink', colorClass);
+            card._signalTimer = setTimeout(function () {
+                card.classList.remove('signal-blink');
+                if (!SIGNAL_RETAIN_COLOR) {
+                    card.classList.remove(colorClass);
+                }
+            }, SIGNAL_DURATION_MS);
+        }
     }
 
     function updateCard(tableId, data) {
@@ -69,15 +111,10 @@
         var body = card.querySelector('.table-card__body');
         if (body) {
             body.innerHTML =
-                '<span class="table-card__result-label">RESULT</span>' +
-                '<span class="table-card__result-value badge badge--' + badgeClassFor(data.result) + '">' + data.result + '</span>' +
-                '<span class="table-card__field">Activity Number: ' + data.activity_number + '</span>' +
-                '<span class="table-card__field">Order #: ' + data.order_number + '</span>';
-        }
-
-        var datetimeEl = card.querySelector('.table-card__datetime');
-        if (datetimeEl && data.activity_datetime_display) {
-            datetimeEl.textContent = data.activity_datetime_display;
+                '<span class="table-card__field"><span class="table-card__field-label">Activity Number:</span> ' + data.activity_number + '</span>' +
+                '<span class="table-card__field table-card__field--result"><span class="table-card__field-label">RESULT:</span> <span class="badge badge--' + badgeClassFor(data.result) + '">' + data.result + '</span></span>' +
+                '<span class="table-card__field"><span class="table-card__field-label">Order #:</span> ' + data.order_number + '</span>' +
+                '<span class="table-card__field"><span class="table-card__field-label">Datetime:</span> ' + data.activity_datetime_display + '</span>';
         }
 
         // Rebuild the View Details link's target URL with the new activity/order
@@ -94,22 +131,12 @@
             viewBtn.style.visibility = 'visible';
         }
 
-        // Blink the WHOLE card (background + border) 5 times in the result's
-        // color, then settle back to normal. (Future: audio cue triggers here too.)
-        var blinkClass = blinkClassFor(data.result);
-        card.classList.remove('table-card--blink-pass', 'table-card--blink-fail', 'table-card--blink-missing');
-        void card.offsetWidth; // force reflow so the animation restarts even on repeated same-result updates
-        card.classList.add(blinkClass);
-        card.addEventListener('animationend', function handler() {
-            card.classList.remove(blinkClass);
-            card.removeEventListener('animationend', handler);
-        });
+        applySignal(card, data.result);
     }
 
     // Real-time push: the server only ever broadcasts genuinely new data
-    // (duplicates are filtered out server-side before broadcasting), so
-    // every event received here is acted on immediately - no polling,
-    // no comparison needed, no delay beyond the network round-trip itself.
+    // (duplicates filtered out server-side), so every event received here
+    // is acted on immediately - no polling, no delay beyond the network.
     var socket = io();
     socket.on('table_update', function (data) {
         updateCard(data.table_id, data);

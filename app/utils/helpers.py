@@ -40,3 +40,19 @@ def format_timestamp(timestamp_value) -> str:
         return dt.strftime("%d %b %Y, %H:%M:%S")
     except ValueError:
         return str(timestamp_value)
+
+
+def format_timestamp_12h(timestamp_value) -> str:
+    """
+    Human-readable timestamp with a 12-hour clock + AM/PM, e.g.
+    '28 Jul 2026, 02:30:05 PM'. Used specifically for the Live Monitoring
+    cards (explicit request for 12-hour format there) - other pages keep
+    the 24-hour format_timestamp() above.
+    """
+    if not timestamp_value:
+        return "-"
+    try:
+        dt = datetime.fromisoformat(str(timestamp_value).replace("Z", "+00:00"))
+        return dt.strftime("%d %b %Y, %I:%M:%S %p")
+    except ValueError:
+        return str(timestamp_value)

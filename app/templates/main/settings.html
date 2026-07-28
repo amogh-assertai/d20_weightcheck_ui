@@ -3,7 +3,43 @@
 {% block title %}{{ client_name }} · Settings{% endblock %}
 
 {% block content %}
-<section class="page-placeholder">
-    <p class="page-placeholder__text">Settings - coming soon.</p>
+<section class="welcome">
+    <h1>Settings</h1>
+    <p class="welcome__subtitle">{{ client_name }}</p>
+</section>
+
+<section class="panel">
+    <div class="panel__header">
+        <h2>Live Monitoring Signal</h2>
+        <span class="panel__hint">Controls how table cards react when new data arrives</span>
+    </div>
+
+    <form method="post" action="{{ url_for('main.settings') }}" class="settings-form">
+        <div class="filters__group">
+            <label>Pattern</label>
+            <div class="toggle-buttons">
+                <label class="toggle-buttons__option{% if live_signal_settings.pattern == 'blink' %} is-selected{% endif %}">
+                    <input type="radio" name="pattern" value="blink" {% if live_signal_settings.pattern == 'blink' %}checked{% endif %}> Blink
+                </label>
+                <label class="toggle-buttons__option{% if live_signal_settings.pattern == 'solid' %} is-selected{% endif %}">
+                    <input type="radio" name="pattern" value="solid" {% if live_signal_settings.pattern == 'solid' %}checked{% endif %}> Solid
+                </label>
+            </div>
+        </div>
+
+        <div class="filters__group">
+            <label for="duration_sec">Duration (seconds)</label>
+            <input type="number" name="duration_sec" id="duration_sec" min="1" max="60" step="1" value="{{ live_signal_settings.duration_sec }}">
+        </div>
+
+        <div class="filters__group filters__group--checkbox">
+            <label>
+                <input type="checkbox" name="retain_color" {% if live_signal_settings.retain_color %}checked{% endif %}>
+                Keep color until next update
+            </label>
+        </div>
+
+        <button type="submit" class="filters__apply">Save Settings</button>
+    </form>
 </section>
 {% endblock %}
