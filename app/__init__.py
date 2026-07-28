@@ -13,7 +13,7 @@ import os
 from flask import Flask, render_template, current_app
 from app.config import Config
 from app.utils.logger import setup_logger
-from app.extensions import init_mongo
+from app.extensions import init_mongo, init_socketio
 
 
 def create_app(config_class=Config):
@@ -23,8 +23,17 @@ def create_app(config_class=Config):
     # Centralized logging setup (console always, rotating file when not in debug)
     setup_logger(app)
 
-    # Set up shared extensions (currently just MongoDB)
+    # Set up shared extensions (MongoDB, SocketIO)
     init_mongo(app)
+    init_socketio(app)
+
+    # Import the socket event handlers so the @socketio.on(...) decorator in
+    # app/sockets.py actually registers (nothing else calls this module -
+    # pure side-effect-on-import, same pattern as blueprints).
+    # NOTE: must use "from app import sockets", NOT "import app.sockets" -
+    # the latter would rebind the local `app` variable (this function's Flask
+    # instance) to the `app` package itself, breaking everything below it.
+    from app import sockets  # noqa: F401
 
     # --- Register blueprints ---
     from app.main.routes import main_bp

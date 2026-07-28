@@ -46,21 +46,9 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
 <script>
 (function () {
-    var POLL_INTERVAL_MS = 3000;
-
-    // Seed with the server-rendered initial state, so the first poll
-    // doesn't re-trigger a blink for data that was already on the page.
-    var lastReceivedAt = {
-        table_1: null, table_2: null, table_3: null, table_4: null
-    };
-    {% for tid, data in latest_status.items() %}
-    {% if data %}
-    lastReceivedAt['{{ tid }}'] = '{{ data.received_at }}';
-    {% endif %}
-    {% endfor %}
-
     function blinkClassFor(result) {
         if (result === 'PASS') return 'table-card--blink-pass';
         if (result === 'FAIL') return 'table-card--blink-fail';
@@ -107,7 +95,7 @@
         }
 
         // Blink the WHOLE card (background + border) 5 times in the result's
-        // color, then settle back to normal.
+        // color, then settle back to normal. (Future: audio cue triggers here too.)
         var blinkClass = blinkClassFor(data.result);
         card.classList.remove('table-card--blink-pass', 'table-card--blink-fail', 'table-card--blink-missing');
         void card.offsetWidth; // force reflow so the animation restarts even on repeated same-result updates
@@ -118,25 +106,14 @@
         });
     }
 
-    function poll() {
-        fetch('/live-status')
-            .then(function (resp) { return resp.json(); })
-            .then(function (data) {
-                Object.keys(data).forEach(function (tableId) {
-                    var entry = data[tableId];
-                    if (!entry) return;
-                    if (entry.received_at !== lastReceivedAt[tableId]) {
-                        lastReceivedAt[tableId] = entry.received_at;
-                        updateCard(tableId, entry);
-                    }
-                });
-            })
-            .catch(function () {
-                // Silent - the next poll will just try again
-            });
-    }
-
-    setInterval(poll, POLL_INTERVAL_MS);
+    // Real-time push: the server only ever broadcasts genuinely new data
+    // (duplicates are filtered out server-side before broadcasting), so
+    // every event received here is acted on immediately - no polling,
+    // no comparison needed, no delay beyond the network round-trip itself.
+    var socket = io();
+    socket.on('table_update', function (data) {
+        updateCard(data.table_id, data);
+    });
 })();
 </script>
 {% endblock %}

@@ -1,7 +1,7 @@
 """
 extensions.py
 -------------
-Shared clients/extensions used across the app. Currently just MongoDB.
+Shared clients/extensions used across the app: MongoDB and SocketIO.
 Kept separate from app/__init__.py so connection details don't clutter
 the application factory, and so other extensions can be added here later
 without touching factory logic.
@@ -9,6 +9,16 @@ without touching factory logic.
 
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
+from flask_socketio import SocketIO
+
+# Created uninitialized here (standard Flask-extension pattern), bound to the
+# actual app inside init_socketio(). This channel is backend -> browser only
+# (Live Monitoring push updates) - the AI device still talks to us via plain
+# HTTP webhooks, not this socket at all.
+#
+# cors_allowed_origins="*" is permissive by design for now - our own Live
+# Monitoring page connects same-origin anyway. Tighten this if ever needed.
+socketio = SocketIO(cors_allowed_origins="*")
 
 
 def init_mongo(app):
@@ -32,3 +42,10 @@ def init_mongo(app):
         app.logger.error(f"Could not configure MongoDB client: {e}")
         app.extensions["mongo_db"] = None
     return app.extensions.get("mongo_db")
+
+
+def init_socketio(app):
+    """Bind the module-level SocketIO instance to this Flask app."""
+    socketio.init_app(app)
+    app.logger.info("SocketIO initialized.")
+    return socketio

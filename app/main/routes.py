@@ -40,14 +40,11 @@ def _parse_activity_date(timestamp_value):
 
 
 def _format_timestamp(timestamp_value):
-    """Human-readable timestamp for display, e.g. '24 Jul 2026, 22:28:48'."""
-    if not timestamp_value:
-        return "-"
-    try:
-        dt = datetime.fromisoformat(str(timestamp_value).replace("Z", "+00:00"))
-        return dt.strftime("%d %b %Y, %H:%M:%S")
-    except ValueError:
-        return str(timestamp_value)
+    """Human-readable timestamp for display - delegates to the shared helper
+    (app/utils/helpers.py) so this page's formatting matches what the
+    WebSocket broadcast payload uses too."""
+    from app.utils.helpers import format_timestamp
+    return format_timestamp(timestamp_value)
 
 
 def _parse_percent(value):

@@ -19,7 +19,8 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 from pymongo.errors import PyMongoError
-from app.live_status import record_result, VALID_TABLE_IDS, REQUIRED_FIELDS
+from app.live_status import check_is_duplicate, persist_result, VALID_TABLE_IDS, REQUIRED_FIELDS
+from app.sockets import broadcast_table_update
 
 api_bp = Blueprint("api", __name__)
 
@@ -132,10 +133,16 @@ def receive_activity_result():
     Expects JSON:
       {"table_id": "table_1", "result": "PASS", "activity_number": 42,
        "activity_datetime": "2026-07-28T10:15:00+00:00", "order_number": "E0857781"}
-    Updates the live-display store (app/live_status.py), which upserts into
-    MongoDB's live_latest_data collection (one doc per table) and keeps an
-    in-memory cache in sync. Separate from POST /activities, which remains
-    the full historical record.
+
+    Order of operations (deliberate): if this is genuinely new data (not an
+    exact repeat), broadcast it to every connected browser client via
+    WebSocket FIRST - that's the time-critical part, since it drives the
+    live blink (and future audio) that should sync to the real detection
+    moment as closely as possible. Persisting to MongoDB happens right
+    after, since that part isn't time-sensitive for the live display.
+
+    Separate from POST /activities, which remains the full historical
+    record (with image), uploaded independently by the AI device.
     """
     payload = request.get_json(silent=True)
     if payload is None:
@@ -149,27 +156,35 @@ def receive_activity_result():
     if missing:
         return jsonify({"error": f"Missing required field(s): {', '.join(missing)}"}), 400
 
+    result = payload.get("result")
+    activity_number = payload.get("activity_number")
+    activity_datetime = payload.get("activity_datetime")
+    order_number = payload.get("order_number")
+
     db = current_app.extensions.get("mongo_db")
-    was_recorded = record_result(
-        db,
-        table_id,
-        result=payload.get("result"),
-        activity_number=payload.get("activity_number"),
-        activity_datetime=payload.get("activity_datetime"),
-        order_number=payload.get("order_number"),
+
+    if check_is_duplicate(db, table_id, result, activity_number):
+        current_app.logger.info(
+            f"Duplicate for {table_id}: activity #{activity_number} ({result}) "
+            f"already stored - ignored, no re-signal sent"
+        )
+        return jsonify({"status": "duplicate_ignored", "table_id": table_id, "result": result}), 200
+
+    data = {
+        "result": result,
+        "activity_number": activity_number,
+        "activity_datetime": activity_datetime,
+        "order_number": order_number,
+        "received_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # 1. Push to every connected browser FIRST - time-critical (blink/audio sync).
+    broadcast_table_update(table_id, data)
+
+    # 2. THEN persist to MongoDB - not time-sensitive for the live display.
+    persist_result(db, table_id, data)
+
+    current_app.logger.info(
+        f"Recorded NEW latest data for {table_id}: {result} (activity #{activity_number})"
     )
-
-    if was_recorded:
-        current_app.logger.info(
-            f"Recorded NEW latest data for {table_id}: {payload.get('result')} "
-            f"(activity #{payload.get('activity_number')})"
-        )
-        status = "recorded"
-    else:
-        current_app.logger.info(
-            f"Duplicate for {table_id}: activity #{payload.get('activity_number')} "
-            f"({payload.get('result')}) already stored - ignored, no re-signal sent"
-        )
-        status = "duplicate_ignored"
-
-    return jsonify({"status": status, "table_id": table_id, "result": payload.get("result")}), 200
+    return jsonify({"status": "recorded", "table_id": table_id, "result": result}), 200
