@@ -41,3 +41,8 @@ class Config:
     # Local AI clients upload activity metadata + image here; we store our own copy.
     MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
     MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "d20_cloud")
+
+    # --- Live Monitoring "View Details" link behavior ---
+    # "new_tab" opens the activity detail page in a new browser tab;
+    # "current_tab" navigates the same tab. Default: new_tab.
+    LIVE_DETAILS_TYPE = os.environ.get("LIVE_DETAILS_TYPE", "new_tab")

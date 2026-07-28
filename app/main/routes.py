@@ -9,7 +9,7 @@ import os
 from datetime import datetime, timezone
 
 from flask import (
-    Blueprint, render_template, current_app, request, send_from_directory, url_for, redirect, flash
+    Blueprint, render_template, current_app, request, send_from_directory, url_for, redirect, flash, jsonify
 )
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -179,12 +179,104 @@ def home():
 
 @main_bp.route("/live-monitoring")
 def live_monitoring():
-    """Live Monitoring - the board with 4 table cards (previously on Home)."""
+    """Live Monitoring - the board with 4 table cards, showing each table's
+    latest result as received via the AI device's webhook (see app/live_status.py
+    and POST /api/webhook/activity-result)."""
+    from app.live_status import get_latest_status
     try:
-        return render_template("main/live_monitoring.html", **_base_context())
+        latest_status = get_latest_status()
+        for data in latest_status.values():
+            if data:
+                data["activity_datetime_display"] = _format_timestamp(data.get("activity_datetime"))
+
+        context = _base_context()
+        context["latest_status"] = latest_status
+        context["live_details_type"] = current_app.config.get("LIVE_DETAILS_TYPE", "new_tab")
+        return render_template("main/live_monitoring.html", **context)
     except Exception as e:
         current_app.logger.error(f"Error rendering live monitoring page: {e}")
         return "Something went wrong loading live monitoring.", 500
+
+
+@main_bp.route("/live-status")
+def live_status():
+    """
+    JSON snapshot of each table's latest data. Polled by the Live Monitoring
+    page every few seconds to pick up new webhook data without a full page
+    reload (see app/live_status.py for how this gets populated).
+    """
+    from app.live_status import get_latest_status
+    status = get_latest_status()
+    for data in status.values():
+        if data:
+            data["activity_datetime_display"] = _format_timestamp(data.get("activity_datetime"))
+    return jsonify(status)
+
+
+@main_bp.route("/live-monitoring/details")
+def live_activity_lookup():
+    """
+    "View Details" from a Live Monitoring card doesn't have a MongoDB _id to
+    go on directly - the webhook only gives us activity_number/order_number.
+    The full record (with image) lands in all_activities separately, via the
+    AI device's other upload path, which can lag a few seconds behind the
+    live webhook. So: look it up by activity_number + order_number (matched
+    against today's date, since this is same-day live data - avoids
+    ambiguity if activity_number ever repeats across different days).
+
+    Found -> redirect straight to the normal activity detail page.
+    Not found yet -> show a "try again shortly" page instead of a hard error.
+    """
+    activity_number_raw = request.args.get("activity_number")
+    order_number = request.args.get("order_number")
+    table_id = request.args.get("table_id", "")
+
+    try:
+        activity_number = int(activity_number_raw)
+    except (TypeError, ValueError):
+        return "Invalid activity number.", 400
+
+    if not order_number:
+        return "Missing order number.", 400
+
+    db = current_app.extensions.get("mongo_db")
+    if db is None:
+        return "Database not configured.", 503
+
+    today = datetime.now(timezone.utc).date()
+    found_doc = None
+
+    try:
+        query = {
+            "activity_number": activity_number,
+            "$or": [
+                {"expected_order_number": order_number},
+                {"actual_order_number": order_number},
+            ],
+        }
+        for candidate in db["all_activities"].find(query):
+            if _parse_activity_date(candidate.get("timestamp")) == today:
+                found_doc = candidate
+                break
+    except Exception as e:
+        current_app.logger.error(f"Error looking up live activity details: {e}")
+        return "Something went wrong looking up this activity.", 500
+
+    if found_doc is not None:
+        return redirect(url_for("main.activity_detail", activity_id=str(found_doc["_id"])))
+
+    # Not uploaded to the historical record yet - show a friendly "try again" page.
+    context = _base_context()
+    context.update({
+        "table_id": table_id,
+        "activity_number": activity_number,
+        "order_number": order_number,
+    })
+    try:
+        return render_template("main/live_details_pending.html", **context)
+    except Exception as e:
+        current_app.logger.error(f"Error rendering live-details-pending page: {e}")
+        return "Details not available yet - try again shortly.", 404
 
 
 @main_bp.route("/health")

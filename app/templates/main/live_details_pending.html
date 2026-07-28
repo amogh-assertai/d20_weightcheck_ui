@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client_name }} · Details Pending{% endblock %}
+
+{% block extra_head %}
+<meta http-equiv="refresh" content="5">
+{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <h1>Details not ready yet</h1>
+    <p class="error-page__body">
+        Activity #{{ activity_number }} (Order #{{ order_number }}) hasn't finished
+        uploading to storage yet - this can take a few seconds after detection.
+        This page will automatically retry in 5 seconds.
+    </p>
+    <div class="error-page__actions">
+        <a href="{{ url_for('main.live_activity_lookup', table_id=table_id, activity_number=activity_number, order_number=order_number) }}" class="filters__apply">Try Now</a>
+        <a href="{{ url_for('main.live_monitoring') }}" class="filters__reset">Back to Live Monitoring</a>
+    </div>
+</section>
+{% endblock %}

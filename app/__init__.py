@@ -26,6 +26,11 @@ def create_app(config_class=Config):
     # Set up shared extensions (currently just MongoDB)
     init_mongo(app)
 
+    # Repopulate the live-status in-memory cache from MongoDB, so a server
+    # restart doesn't lose the "latest per table" view (see app/live_status.py).
+    from app.live_status import load_from_db
+    load_from_db(app.extensions.get("mongo_db"))
+
     # --- Register blueprints ---
     from app.main.routes import main_bp
     app.register_blueprint(main_bp)

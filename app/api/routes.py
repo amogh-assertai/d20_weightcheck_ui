@@ -1,15 +1,16 @@
 """
 app/api/routes.py
 -------------------
-REST ingestion endpoint. A local script uploads one activity's metadata
-(as JSON) together with its evidence image (as a file) in a single
-multipart/form-data request. This endpoint:
-  1. Saves the image to disk under uploads/{date}/{table}/
-  2. Stores the image path inside the activity document
-  3. Inserts that document into MongoDB
+Two endpoints for the AI device:
 
-Scope: exactly this one endpoint - nothing else (no auth, no listing route,
-no extra validation beyond what's needed to build the file path safely).
+1. POST /activities - full activity metadata + evidence image, persisted to
+   MongoDB. The one source of truth for history.
+
+2. POST /webhook/activity-result - lightweight fire-and-forget webhook, just
+   the latest result per table, for live display on the Live Monitoring page
+   only. NOT persisted to MongoDB - separate mechanism, separate purpose
+   (matches how the AI team described it: validation-result delivery is a
+   distinct webhook from the full activity+image ingestion).
 """
 
 import os
@@ -18,6 +19,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 from pymongo.errors import PyMongoError
+from app.live_status import record_result, VALID_TABLE_IDS, REQUIRED_FIELDS
 
 api_bp = Blueprint("api", __name__)
 
@@ -121,3 +123,44 @@ def receive_activity():
     except Exception as e:
         current_app.logger.error(f"Unexpected error storing activity: {e}")
         return jsonify({"error": "Unexpected server error"}), 500
+
+
+@api_bp.route("/webhook/activity-result", methods=["POST"])
+def receive_activity_result():
+    """
+    Lightweight fire-and-forget webhook: latest data for one table.
+    Expects JSON:
+      {"table_id": "table_1", "result": "PASS", "activity_number": 42,
+       "activity_datetime": "2026-07-28T10:15:00+00:00", "order_number": "E0857781"}
+    Updates the live-display store (app/live_status.py), which upserts into
+    MongoDB's live_latest_data collection (one doc per table) and keeps an
+    in-memory cache in sync. Separate from POST /activities, which remains
+    the full historical record.
+    """
+    payload = request.get_json(silent=True)
+    if payload is None:
+        return jsonify({"error": "Request body must be valid JSON"}), 400
+
+    table_id = payload.get("table_id")
+    if not table_id or table_id not in VALID_TABLE_IDS:
+        return jsonify({"error": f"'table_id' must be one of {list(VALID_TABLE_IDS)}"}), 400
+
+    missing = [f for f in REQUIRED_FIELDS if payload.get(f) is None]
+    if missing:
+        return jsonify({"error": f"Missing required field(s): {', '.join(missing)}"}), 400
+
+    db = current_app.extensions.get("mongo_db")
+    record_result(
+        db,
+        table_id,
+        result=payload.get("result"),
+        activity_number=payload.get("activity_number"),
+        activity_datetime=payload.get("activity_datetime"),
+        order_number=payload.get("order_number"),
+    )
+    current_app.logger.info(
+        f"Recorded latest data for {table_id}: {payload.get('result')} "
+        f"(activity #{payload.get('activity_number')})"
+    )
+
+    return jsonify({"status": "recorded", "table_id": table_id, "result": payload.get("result")}), 200

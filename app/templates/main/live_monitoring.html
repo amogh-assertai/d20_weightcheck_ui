@@ -2,6 +2,33 @@
 
 {% block title %}{{ client_name }} · Live Monitoring{% endblock %}
 
+{% macro table_card(table_id, corner_class, data, live_details_type) %}
+<div class="table-card {{ corner_class }}" data-table-id="{{ table_id }}">
+    <span class="table-card__datetime">{{ data.activity_datetime_display if data else '' }}</span>
+    <span class="table-card__number">Table {{ table_id.split('_')[1] }}</span>
+
+    <div class="table-card__body">
+        {% if data %}
+        <span class="table-card__result-label">RESULT</span>
+        <span class="table-card__result-value badge badge--{{ 'pass' if data.result == 'PASS' else 'fail' if data.result == 'FAIL' else 'warn' if data.result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">{{ data.result }}</span>
+        <span class="table-card__field">Activity Number: {{ data.activity_number }}</span>
+        <span class="table-card__field">Order #: {{ data.order_number }}</span>
+        {% else %}
+        <span class="table-card__result--empty">No data yet</span>
+        {% endif %}
+    </div>
+
+    <a
+        href="{% if data %}{{ url_for('main.live_activity_lookup', table_id=table_id, activity_number=data.activity_number, order_number=data.order_number) }}{% else %}#{% endif %}"
+        target="{{ '_blank' if live_details_type == 'new_tab' else '_self' }}"
+        class="btn-view table-card__view-btn"
+        {% if not data %}style="visibility: hidden;"{% endif %}
+        data-details-base-url="{{ url_for('main.live_activity_lookup') }}"
+        data-details-target="{{ '_blank' if live_details_type == 'new_tab' else '_self' }}"
+    >View Details</a>
+</div>
+{% endmacro %}
+
 {% block content %}
 <section class="welcome">
     <h1>Live Monitoring</h1>
@@ -10,22 +37,106 @@
 
 <section class="table-section">
     <div class="board">
-        <a href="#" class="table-card table-card--tl">
-            <span class="table-card__index">01</span>
-            <span class="table-card__name">Table 1</span>
-        </a>
-        <a href="#" class="table-card table-card--tr">
-            <span class="table-card__index">02</span>
-            <span class="table-card__name">Table 2</span>
-        </a>
-        <a href="#" class="table-card table-card--bl">
-            <span class="table-card__index">03</span>
-            <span class="table-card__name">Table 3</span>
-        </a>
-        <a href="#" class="table-card table-card--br">
-            <span class="table-card__index">04</span>
-            <span class="table-card__name">Table 4</span>
-        </a>
+        {{ table_card('table_1', 'table-card--tl', latest_status.get('table_1'), live_details_type) }}
+        {{ table_card('table_2', 'table-card--tr', latest_status.get('table_2'), live_details_type) }}
+        {{ table_card('table_3', 'table-card--bl', latest_status.get('table_3'), live_details_type) }}
+        {{ table_card('table_4', 'table-card--br', latest_status.get('table_4'), live_details_type) }}
     </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    var POLL_INTERVAL_MS = 3000;
+
+    // Seed with the server-rendered initial state, so the first poll
+    // doesn't re-trigger a blink for data that was already on the page.
+    var lastReceivedAt = {
+        table_1: null, table_2: null, table_3: null, table_4: null
+    };
+    {% for tid, data in latest_status.items() %}
+    {% if data %}
+    lastReceivedAt['{{ tid }}'] = '{{ data.received_at }}';
+    {% endif %}
+    {% endfor %}
+
+    function blinkClassFor(result) {
+        if (result === 'PASS') return 'table-card--blink-pass';
+        if (result === 'FAIL') return 'table-card--blink-fail';
+        return 'table-card--blink-missing'; // MISSING_DATA and anything else -> yellow
+    }
+
+    function badgeClassFor(result) {
+        if (result === 'PASS') return 'pass';
+        if (result === 'FAIL') return 'fail';
+        if (result === 'MISSING_DATA' || result === 'INVALID_WEIGHT_DATA') return 'warn';
+        return 'muted';
+    }
+
+    function updateCard(tableId, data) {
+        var card = document.querySelector('.table-card[data-table-id="' + tableId + '"]');
+        if (!card) return;
+
+        var body = card.querySelector('.table-card__body');
+        if (body) {
+            body.innerHTML =
+                '<span class="table-card__result-label">RESULT</span>' +
+                '<span class="table-card__result-value badge badge--' + badgeClassFor(data.result) + '">' + data.result + '</span>' +
+                '<span class="table-card__field">Activity Number: ' + data.activity_number + '</span>' +
+                '<span class="table-card__field">Order #: ' + data.order_number + '</span>';
+        }
+
+        var datetimeEl = card.querySelector('.table-card__datetime');
+        if (datetimeEl && data.activity_datetime_display) {
+            datetimeEl.textContent = data.activity_datetime_display;
+        }
+
+        // Rebuild the View Details link's target URL with the new activity/order
+        // number, and make sure it's visible now that this card has real data.
+        var viewBtn = card.querySelector('.table-card__view-btn');
+        if (viewBtn) {
+            var baseUrl = viewBtn.getAttribute('data-details-base-url');
+            var params = new URLSearchParams({
+                table_id: tableId,
+                activity_number: data.activity_number,
+                order_number: data.order_number
+            });
+            viewBtn.setAttribute('href', baseUrl + '?' + params.toString());
+            viewBtn.style.visibility = 'visible';
+        }
+
+        // Blink the WHOLE card (background + border) 5 times in the result's
+        // color, then settle back to normal.
+        var blinkClass = blinkClassFor(data.result);
+        card.classList.remove('table-card--blink-pass', 'table-card--blink-fail', 'table-card--blink-missing');
+        void card.offsetWidth; // force reflow so the animation restarts even on repeated same-result updates
+        card.classList.add(blinkClass);
+        card.addEventListener('animationend', function handler() {
+            card.classList.remove(blinkClass);
+            card.removeEventListener('animationend', handler);
+        });
+    }
+
+    function poll() {
+        fetch('/live-status')
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                Object.keys(data).forEach(function (tableId) {
+                    var entry = data[tableId];
+                    if (!entry) return;
+                    if (entry.received_at !== lastReceivedAt[tableId]) {
+                        lastReceivedAt[tableId] = entry.received_at;
+                        updateCard(tableId, entry);
+                    }
+                });
+            })
+            .catch(function () {
+                // Silent - the next poll will just try again
+            });
+    }
+
+    setInterval(poll, POLL_INTERVAL_MS);
+})();
+</script>
 {% endblock %}
