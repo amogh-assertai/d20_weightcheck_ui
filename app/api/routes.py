@@ -150,7 +150,7 @@ def receive_activity_result():
         return jsonify({"error": f"Missing required field(s): {', '.join(missing)}"}), 400
 
     db = current_app.extensions.get("mongo_db")
-    record_result(
+    was_recorded = record_result(
         db,
         table_id,
         result=payload.get("result"),
@@ -158,9 +158,18 @@ def receive_activity_result():
         activity_datetime=payload.get("activity_datetime"),
         order_number=payload.get("order_number"),
     )
-    current_app.logger.info(
-        f"Recorded latest data for {table_id}: {payload.get('result')} "
-        f"(activity #{payload.get('activity_number')})"
-    )
 
-    return jsonify({"status": "recorded", "table_id": table_id, "result": payload.get("result")}), 200
+    if was_recorded:
+        current_app.logger.info(
+            f"Recorded NEW latest data for {table_id}: {payload.get('result')} "
+            f"(activity #{payload.get('activity_number')})"
+        )
+        status = "recorded"
+    else:
+        current_app.logger.info(
+            f"Duplicate for {table_id}: activity #{payload.get('activity_number')} "
+            f"({payload.get('result')}) already stored - ignored, no re-signal sent"
+        )
+        status = "duplicate_ignored"
+
+    return jsonify({"status": status, "table_id": table_id, "result": payload.get("result")}), 200

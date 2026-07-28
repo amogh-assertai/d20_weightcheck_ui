@@ -1,17 +1,19 @@
 """
 app/live_status.py
 -------------------
-Latest-result-per-table store. Written by the AI device's webhook
-(POST /api/webhook/activity-result, see app/api/routes.py), read by:
-  - the Live Monitoring page on initial load (server-rendered)
-  - GET /live-status, polled by the browser every few seconds for
-    near-real-time updates (see live_monitoring.html)
+Latest-result-per-table lookup, backed directly by MongoDB (collection:
+live_latest_data, one document per table, upserted - always exactly 4
+documents).
 
-Backed by MongoDB (collection: live_latest_data, one document per table,
-upserted - so there are always exactly 4 documents) so the "latest" view
-survives a server restart. An in-memory cache sits on top so repeated
-polls from multiple browser tabs don't all hit MongoDB - load_from_db()
-repopulates that cache from MongoDB once at app startup.
+IMPORTANT: reads go straight to MongoDB on every call, NOT an in-memory
+cache. An earlier version kept an in-memory cache for speed, but that
+broke under multiple Gunicorn worker processes - each worker has its own
+separate memory, so a webhook landing on worker A only updated worker A's
+copy, while a page load/poll landing on worker B kept showing whatever
+worker B last happened to see (stale, and inconsistent between requests
+depending on which worker handled them - looks like data "reverting" to
+an older value). MongoDB is the one place every worker actually shares,
+so reading from it directly is what's correct here.
 """
 
 from datetime import datetime, timezone
@@ -19,42 +21,36 @@ from datetime import datetime, timezone
 VALID_TABLE_IDS = ("table_1", "table_2", "table_3", "table_4")
 REQUIRED_FIELDS = ("result", "activity_number", "activity_datetime", "order_number")
 
-_latest_by_table = {table_id: None for table_id in VALID_TABLE_IDS}
-
-
-def _doc_to_dict(doc):
-    return {
-        "result": doc.get("result"),
-        "activity_number": doc.get("activity_number"),
-        "activity_datetime": doc.get("activity_datetime"),
-        "order_number": doc.get("order_number"),
-        "received_at": doc.get("received_at"),
-    }
-
-
-def load_from_db(db):
-    """
-    Populate the in-memory cache from MongoDB - call once at app startup,
-    so a restart doesn't lose the 'latest' view for tables that still have
-    valid recent data. Best-effort: if this fails, webhook/polling still
-    work fine going forward, just start from an empty cache.
-    """
-    if db is None:
-        return
-    try:
-        for doc in db["live_latest_data"].find({}):
-            table_id = doc.get("table_id")
-            if table_id in VALID_TABLE_IDS:
-                _latest_by_table[table_id] = _doc_to_dict(doc)
-    except Exception:
-        pass
-
 
 def record_result(db, table_id, result, activity_number, activity_datetime, order_number):
     """
-    Store the latest data for one table - upserts into MongoDB and updates
-    the in-memory cache. Caller must validate table_id/required fields first.
+    Upsert the latest data for one table into MongoDB - but ONLY if this is
+    genuinely new (different activity_number or different result than what's
+    already stored). An exact repeat is silently ignored and received_at is
+    left untouched. Returns True if recorded, False if skipped as a duplicate.
+
+    This matters because received_at is what the frontend polling compares
+    to decide "something changed, blink the card." If a sender re-POSTs the
+    same activity repeatedly (loop, retry logic, etc.), the old behavior
+    treated every single POST as new and kept re-triggering the blink
+    indefinitely. Now: one genuinely new activity -> one signal to the UI.
     """
+    if db is None:
+        return False
+
+    try:
+        existing = db["live_latest_data"].find_one({"table_id": table_id})
+    except Exception:
+        existing = None
+
+    is_duplicate = (
+        existing is not None
+        and existing.get("activity_number") == activity_number
+        and existing.get("result") == result
+    )
+    if is_duplicate:
+        return False
+
     data = {
         "result": result,
         "activity_number": activity_number,
@@ -62,29 +58,37 @@ def record_result(db, table_id, result, activity_number, activity_datetime, orde
         "order_number": order_number,
         "received_at": datetime.now(timezone.utc).isoformat(),
     }
-
-    if db is not None:
-        try:
-            db["live_latest_data"].update_one(
-                {"table_id": table_id},
-                {"$set": {"table_id": table_id, **data}},
-                upsert=True,
-            )
-        except Exception:
-            # Don't let a Mongo hiccup break the live-display update itself -
-            # the in-memory cache below still gets updated regardless.
-            pass
-
-    _latest_by_table[table_id] = data
+    try:
+        db["live_latest_data"].update_one(
+            {"table_id": table_id},
+            {"$set": {"table_id": table_id, **data}},
+            upsert=True,
+        )
+    except Exception:
+        pass  # a Mongo hiccup shouldn't crash the webhook response
+    return True
 
 
-def get_latest_status():
+def get_latest_status(db):
     """
-    Current latest-data snapshot for all 4 tables - a fresh copy each call,
-    safe for callers to add their own display-only fields to (e.g. a
-    formatted datetime) without mutating the shared in-memory cache.
+    Current latest-data snapshot for all 4 tables, read directly from
+    MongoDB every call - not cached - so every Gunicorn worker process
+    sees exactly the same data.
     """
-    return {
-        table_id: (dict(data) if data else None)
-        for table_id, data in _latest_by_table.items()
-    }
+    status = {table_id: None for table_id in VALID_TABLE_IDS}
+    if db is None:
+        return status
+    try:
+        for doc in db["live_latest_data"].find({"table_id": {"$in": list(VALID_TABLE_IDS)}}):
+            table_id = doc.get("table_id")
+            if table_id in VALID_TABLE_IDS:
+                status[table_id] = {
+                    "result": doc.get("result"),
+                    "activity_number": doc.get("activity_number"),
+                    "activity_datetime": doc.get("activity_datetime"),
+                    "order_number": doc.get("order_number"),
+                    "received_at": doc.get("received_at"),
+                }
+    except Exception:
+        pass  # best-effort - returns whatever tables were readable, None for the rest
+    return status

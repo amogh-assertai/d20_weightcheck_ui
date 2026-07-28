@@ -184,7 +184,7 @@ def live_monitoring():
     and POST /api/webhook/activity-result)."""
     from app.live_status import get_latest_status
     try:
-        latest_status = get_latest_status()
+        latest_status = get_latest_status(current_app.extensions.get("mongo_db"))
         for data in latest_status.values():
             if data:
                 data["activity_datetime_display"] = _format_timestamp(data.get("activity_datetime"))
@@ -206,7 +206,7 @@ def live_status():
     reload (see app/live_status.py for how this gets populated).
     """
     from app.live_status import get_latest_status
-    status = get_latest_status()
+    status = get_latest_status(current_app.extensions.get("mongo_db"))
     for data in status.values():
         if data:
             data["activity_datetime_display"] = _format_timestamp(data.get("activity_datetime"))
