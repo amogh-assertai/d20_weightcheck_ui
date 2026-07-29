@@ -1035,6 +1035,75 @@ body.page-fit-screen .footer {
     gap: 12px;
 }
 
+/* --- Accuracy Analytics: headline number + formula breakdown --- */
+.accuracy-headline {
+    text-align: center;
+}
+
+.accuracy-headline__value {
+    font-family: var(--font-mono);
+    font-size: clamp(48px, 6vw, 72px);
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.1;
+    margin: 8px 0 4px;
+}
+
+.accuracy-headline__value--na {
+    color: var(--text-muted);
+    font-size: clamp(32px, 4vw, 44px);
+}
+
+.accuracy-headline__sub {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.accuracy-explain p {
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 10px;
+}
+
+.accuracy-explain code {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+}
+
+.accuracy-formula {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+}
+
+.accuracy-formula__line {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--text);
+    padding: 4px 0;
+}
+
+.accuracy-formula__line--result {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    border-top: 1px solid var(--panel-border);
+    margin-top: 6px;
+    padding-top: 10px;
+}
+
+.accuracy-explain__note {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 /* --- Footer --- */
 .footer {
     text-align: center;

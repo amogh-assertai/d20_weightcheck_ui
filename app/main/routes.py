@@ -6,7 +6,7 @@ Activity Details (with prev/next + review form), and evidence-image serving.
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from flask import (
     Blueprint, render_template, current_app, request, send_from_directory, url_for, redirect, flash, jsonify
@@ -450,6 +450,108 @@ def analytics_system():
     except Exception as e:
         current_app.logger.error(f"Error rendering analytics page: {e}")
         return "Something went wrong loading analytics.", 500
+
+
+@main_bp.route("/analytics/accuracy")
+def analytics_accuracy():
+    """
+    Accuracy Analytics - a dynamic metric that depends on ongoing human
+    review of FAIL/MISSING_DATA activities (System Error / Process Error
+    markings), NOT a fixed number. See the calculation breakdown rendered
+    directly on the page - the formula and every intermediate count are
+    shown, not just the final percentage, since this changes as review
+    progresses.
+
+    Rules (also explained on the page itself):
+    - PASS is always counted as correct.
+    - FAIL/MISSING_DATA is only included if at least one of System Error /
+      Process Error has been marked (Yes or No) - if both are still
+      untouched, it's excluded (pending review).
+    - Of the reviewed ones: System Error = Yes -> incorrect. Process Error
+      = Yes, or both marked No -> correct.
+    - If both are marked Yes on the same activity, System Error takes
+      priority (counted as incorrect).
+    """
+    db = current_app.extensions.get("mongo_db")
+    error = None
+
+    yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
+    selected_date_str = request.args.get("date", yesterday.isoformat())
+    try:
+        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        selected_date = yesterday
+        selected_date_str = yesterday.isoformat()
+
+    total_count = pass_count = fail_count = missing_count = 0
+    reviewed_non_pass = unmarked_non_pass = system_error_count = correct_non_pass = 0
+
+    if db is None:
+        error = "Database not configured."
+    else:
+        try:
+            for doc in db["all_activities"].find({}):
+                if _parse_activity_date(doc.get("timestamp")) != selected_date:
+                    continue
+
+                total_count += 1
+                result = doc.get("validation_result")
+
+                if result == "PASS":
+                    pass_count += 1
+                    continue
+                elif result == "FAIL":
+                    fail_count += 1
+                elif result == "MISSING_DATA":
+                    missing_count += 1
+                else:
+                    continue  # unexpected/other value - not part of the pass/fail/missing buckets
+
+                system_error = doc.get("mark_ocr_wrong")
+                process_error = doc.get("mark_process_error")
+
+                if system_error is None and process_error is None:
+                    unmarked_non_pass += 1
+                else:
+                    reviewed_non_pass += 1
+                    if system_error == "YES":
+                        system_error_count += 1
+                    else:
+                        correct_non_pass += 1
+        except Exception as e:
+            current_app.logger.error(f"Error computing accuracy analytics: {e}")
+            error = "Could not load accuracy analytics."
+
+    non_pass_count = fail_count + missing_count
+    evaluated_total = pass_count + reviewed_non_pass
+    correct_total = pass_count + correct_non_pass
+    accuracy_pct = round((correct_total / evaluated_total * 100), 1) if evaluated_total else None
+    pending_pct = round((unmarked_non_pass / non_pass_count * 100), 1) if non_pass_count else 0.0
+
+    context = _base_context()
+    context.update({
+        "error": error,
+        "selected_date": selected_date_str,
+        "total_count": total_count,
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "missing_count": missing_count,
+        "non_pass_count": non_pass_count,
+        "reviewed_non_pass": reviewed_non_pass,
+        "unmarked_non_pass": unmarked_non_pass,
+        "system_error_count": system_error_count,
+        "correct_non_pass": correct_non_pass,
+        "evaluated_total": evaluated_total,
+        "correct_total": correct_total,
+        "accuracy_pct": accuracy_pct,
+        "pending_pct": pending_pct,
+    })
+
+    try:
+        return render_template("main/analytics_accuracy.html", **context)
+    except Exception as e:
+        current_app.logger.error(f"Error rendering accuracy analytics page: {e}")
+        return "Something went wrong loading accuracy analytics.", 500
 
 
 @main_bp.route("/history")

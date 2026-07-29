@@ -10,7 +10,7 @@
 
 <div class="subnav">
     <a href="{{ url_for('main.analytics_system') }}" class="subnav__link is-active">System Analytics</a>
-    <!-- More analytics pages can be added here later -->
+    <a href="{{ url_for('main.analytics_accuracy') }}" class="subnav__link">Accuracy</a>
 </div>
 
 <form method="get" action="{{ url_for('main.analytics_system') }}" class="filters">
