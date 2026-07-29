@@ -69,55 +69,88 @@
 
 <section class="panel">
     <div class="panel__header">
-        <h2>Review progress</h2>
-        <span class="panel__hint">{{ pending_pct }}% of non-pass activities still unreviewed</span>
+        <h2>How this is calculated</h2>
+        <span class="panel__hint">Every activity, traced from total count down to the final accuracy</span>
     </div>
-    <div class="camera-stat-grid">
-        <div class="camera-stat-card">
-            <div class="camera-stat-card__header">
-                <span class="camera-stat-card__name">Non-pass activities (FAIL + MISSING_DATA)</span>
-                <span class="camera-stat-card__total">{{ non_pass_count }} total</span>
+
+    <div class="accuracy-flow">
+        <div class="flow-node flow-node--total">
+            <span class="flow-node__label">Total Activities</span>
+            <span class="flow-node__value">{{ total_count }}</span>
+        </div>
+
+        <div class="flow-arrow">&#9660;</div>
+
+        <div class="flow-row flow-row--top">
+            <div class="flow-column">
+                <div class="flow-node flow-node--pass">
+                    <span class="flow-node__label">PASS</span>
+                    <span class="flow-node__value">{{ pass_count }}</span>
+                    <span class="flow-node__note">Always correct</span>
+                </div>
             </div>
-            <div class="stacked-bar">
-                {% if system_error_count %}<div class="stacked-bar__seg stacked-bar__seg--fail" style="width: {{ (system_error_count / non_pass_count * 100) if non_pass_count else 0 }}%;" title="System Error (incorrect): {{ system_error_count }}"></div>{% endif %}
-                {% if correct_non_pass %}<div class="stacked-bar__seg stacked-bar__seg--pass" style="width: {{ (correct_non_pass / non_pass_count * 100) if non_pass_count else 0 }}%;" title="Reviewed, counted correct: {{ correct_non_pass }}"></div>{% endif %}
-                {% if unmarked_non_pass %}<div class="stacked-bar__seg stacked-bar__seg--muted" style="width: {{ (unmarked_non_pass / non_pass_count * 100) if non_pass_count else 0 }}%;" title="Not yet reviewed: {{ unmarked_non_pass }}"></div>{% endif %}
-            </div>
-            <div class="camera-stat-card__breakdown">
-                <span class="breakdown-item breakdown-item--fail">{{ system_error_count }} System Error (incorrect)</span>
-                <span class="breakdown-item breakdown-item--pass">{{ correct_non_pass }} Process Error or confirmed (correct)</span>
-                <span class="breakdown-item">{{ unmarked_non_pass }} Not yet reviewed (excluded)</span>
+
+            <div class="flow-column">
+                <div class="flow-node flow-node--neutral">
+                    <span class="flow-node__label">FAIL + MISSING_DATA</span>
+                    <span class="flow-node__value">{{ non_pass_count }}</span>
+                    <span class="flow-node__note">Needs review</span>
+                </div>
+
+                <div class="flow-arrow">&#9660;</div>
+
+                <div class="flow-row">
+                    <div class="flow-node flow-node--neutral">
+                        <span class="flow-node__label">Reviewed</span>
+                        <span class="flow-node__value">{{ reviewed_non_pass }}</span>
+                    </div>
+                    <div class="flow-node flow-node--excluded">
+                        <span class="flow-node__label">Not Reviewed</span>
+                        <span class="flow-node__value">{{ unmarked_non_pass }}</span>
+                        <span class="flow-node__note">Excluded from accuracy</span>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">&#9660;</div>
+
+                <div class="flow-row">
+                    <div class="flow-node flow-node--fail">
+                        <span class="flow-node__label">System Error</span>
+                        <span class="flow-node__value">{{ system_error_count }}</span>
+                        <span class="flow-node__note">Incorrect</span>
+                    </div>
+                    <div class="flow-node flow-node--pass">
+                        <span class="flow-node__label">Process Error / Confirmed OK</span>
+                        <span class="flow-node__value">{{ correct_non_pass }}</span>
+                        <span class="flow-node__note">Correct</span>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</section>
 
-<section class="panel">
-    <div class="panel__header">
-        <h2>How this is calculated</h2>
-        <span class="panel__hint">Full formula, with today's actual numbers</span>
-    </div>
-    <div class="accuracy-explain">
-        <p><strong>Rule 1</strong> - Every <code>PASS</code> is assumed correct. No review needed.</p>
-        <p><strong>Rule 2</strong> - Every <code>FAIL</code> / <code>MISSING_DATA</code> activity must be reviewed (marked System Error and/or Process Error) before it counts toward accuracy at all. Untouched activities are excluded, not counted as wrong.</p>
-        <p><strong>Rule 3</strong> - Once reviewed: <code>System Error = Yes</code> means the system itself got it wrong (a genuine solution error) - counted as <strong>incorrect</strong>. <code>Process Error = Yes</code>, or both marked <code>No</code>, means the system's call was right - counted as <strong>correct</strong>.</p>
-        <p><strong>Edge case:</strong> if an activity is marked <code>Yes</code> for both System Error and Process Error, System Error takes priority (counted as incorrect).</p>
+        <div class="flow-arrow">&#9660;</div>
+
+        <div class="flow-node flow-node--total-correct">
+            <span class="flow-node__label">Total Correct</span>
+            <span class="flow-node__value">{{ correct_total }}</span>
+            <span class="flow-node__note">{{ pass_count }} (PASS) + {{ correct_non_pass }} (reviewed &amp; correct)</span>
+        </div>
+
+        <div class="flow-arrow">&#9660;</div>
 
         <div class="accuracy-formula">
-            <div class="accuracy-formula__line">
-                Accuracy = (PASS + Correct non-pass) &divide; (PASS + Reviewed non-pass) &times; 100
-            </div>
-            <div class="accuracy-formula__line">
-                = ({{ pass_count }} + {{ correct_non_pass }}) &divide; ({{ pass_count }} + {{ reviewed_non_pass }}) &times; 100
-            </div>
+            <div class="accuracy-formula__line">Accuracy = Total Correct &divide; Total Evaluated &times; 100</div>
+            <div class="accuracy-formula__line">Total Evaluated = PASS + Reviewed = {{ pass_count }} + {{ reviewed_non_pass }} = {{ evaluated_total }}</div>
+            <div class="accuracy-formula__line">= {{ correct_total }} &divide; {{ evaluated_total }} &times; 100</div>
             <div class="accuracy-formula__line accuracy-formula__line--result">
                 = {{ accuracy_pct if accuracy_pct is not none else 'N/A' }}{{ '%' if accuracy_pct is not none else '' }}
             </div>
         </div>
 
         <p class="accuracy-explain__note">
-            {{ unmarked_non_pass }} activit{{ 'y is' if unmarked_non_pass == 1 else 'ies are' }} still unreviewed for this date and excluded from the number above -
-            this figure will change as your team finishes marking them.
+            {{ unmarked_non_pass }} activit{{ 'y is' if unmarked_non_pass == 1 else 'ies are' }} excluded above (not yet reviewed) -
+            this number will change as your team finishes marking them. If an activity is marked <code>Yes</code> for both
+            System Error and Process Error, System Error takes priority (counted as incorrect).
         </p>
     </div>
 </section>
