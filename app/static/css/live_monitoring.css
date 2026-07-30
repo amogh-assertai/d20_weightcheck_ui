@@ -200,8 +200,22 @@ body.page-fit-screen .board {
 .signal-blink.signal--warn { animation: signal-blink-warn 0.4s ease-in-out infinite; }
 
 /* --- Responsive: corner-pinned absolute layout doesn't work on narrow
-   screens - stack the cards instead --- */
+   screens - stack the cards instead, and let the page scroll normally
+   (the fit-to-screen/no-scroll behavior is desktop-only - see the mobile
+   reset in style.css for the shared body.page-fit-screen rules; these are
+   the Live-Monitoring-specific ones that live in this file instead). --- */
 @media (max-width: 640px) {
+    body.page-fit-screen .table-section {
+        flex: none;
+        display: block;
+        margin-top: 12px;
+    }
+
+    body.page-fit-screen .board {
+        flex: none;
+        height: auto;
+    }
+
     .board {
         height: auto;
         display: flex;
@@ -209,12 +223,41 @@ body.page-fit-screen .board {
         gap: 14px;
         padding: 16px;
     }
+
     .table-card {
         position: static;
         width: 100%;
         height: auto;
+        padding: 20px;
+        gap: 12px;
     }
+
+    .table-card__number {
+        font-size: 22px;
+    }
+
+    .table-card__field {
+        font-size: 15px;
+    }
+
+    .table-card__view-btn {
+        width: 100%;
+        padding: 12px; /* bigger tap target on touch screens */
+    }
+
     .table-section {
         padding: 0 8px;
+    }
+
+    .audio-status {
+        top: auto;
+        bottom: 16px;
+        right: 16px;
+        padding: 8px 14px; /* bigger tap target */
+    }
+
+    .audio-modal__text {
+        font-size: 16px;
+        padding: 0 24px;
     }
 }

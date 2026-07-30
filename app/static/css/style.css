@@ -668,10 +668,59 @@ body {
     width: 100%;
 }
 
-/* Stack the 3-column detail layout on narrower screens */
+/* Stack the 3-column detail layout on narrower/tablet screens */
 @media (max-width: 900px) {
     .detail-body {
         grid-template-columns: 1fr;
+    }
+}
+
+/* --- Mobile: a genuinely reordered layout, not just the same 3 columns
+   squeezed into 1. Desktop stays exactly as-is above this breakpoint -
+   mobile is just for a quick glance, so priority is: see the image and
+   result fast, everything else follows below. --- */
+@media (max-width: 640px) {
+    /* Image first - the thing you actually want to glance at */
+    .detail-image { order: -3; }
+    /* Then the left panel (order/weight numbers) */
+    .detail-side--left { order: -2; }
+    /* Then the right column (activity/reasoning fields + review form) */
+    .detail-right-column { order: -1; }
+
+    .detail-top {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .detail-header-center {
+        order: -1;
+        flex: 1 1 100%;
+        margin-bottom: 4px;
+    }
+
+    .detail-nav {
+        flex: 1 1 45%;
+    }
+
+    .detail-nav--next {
+        text-align: right;
+    }
+
+    .nav-btn {
+        display: block;
+        width: 100%;
+        padding: 12px; /* bigger tap target on touch screens */
+        box-sizing: border-box;
+    }
+
+    .toggle-buttons__option {
+        flex: 1;
+        text-align: center;
+        padding: 10px; /* bigger tap target */
+    }
+
+    .review-form textarea {
+        font-size: 16px; /* prevents iOS Safari from auto-zooming in on focus */
     }
 }
 
@@ -727,6 +776,47 @@ body.page-fit-screen .zoom-container {
 
 body.page-fit-screen .footer {
     display: none; /* footer would push content past the viewport - hide it here only */
+}
+
+/* --- Mobile: fit-to-screen (no page scroll) is a DESKTOP-ONLY behavior.
+   On phones, let the page scroll normally - cramming everything into one
+   screen height makes small-screen content unreadable. This resets every
+   fit-to-screen rule above back to normal document flow below 768px. --- */
+@media (max-width: 768px) {
+    body.page-fit-screen {
+        height: auto;
+        overflow: visible;
+        display: block;
+    }
+
+    body.page-fit-screen .content {
+        flex: none;
+        display: block;
+        overflow: visible;
+        padding-bottom: 0;
+    }
+
+    body.page-fit-screen .detail-body {
+        flex: none;
+    }
+
+    body.page-fit-screen .detail-side,
+    body.page-fit-screen .detail-right-column {
+        overflow-y: visible;
+    }
+
+    body.page-fit-screen .detail-image {
+        display: block;
+    }
+
+    body.page-fit-screen .zoom-container {
+        flex: none;
+        height: clamp(260px, 45vh, 420px); /* smaller on mobile - room left to scroll to the fields below */
+    }
+
+    body.page-fit-screen .footer {
+        display: block; /* not fighting for vertical space anymore - show it again */
+    }
 }
 
 /* --- View Details button in the table --- */
@@ -1206,5 +1296,14 @@ body.page-fit-screen .footer {
     }
     .content {
         padding: 20px;
+    }
+
+    /* Applies everywhere (History filters, Settings, search box, etc.) -
+       iOS Safari auto-zooms in on any input with font-size under 16px,
+       which is jarring on a form with several fields in a row. */
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
     }
 }
