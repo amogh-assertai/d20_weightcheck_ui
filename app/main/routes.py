@@ -182,6 +182,7 @@ def live_monitoring():
     from app.live_status import get_latest_status
     from app.settings_store import get_live_signal_settings
     from app.utils.helpers import format_timestamp_12h
+    from app.audio_config import load_audio_config
     try:
         db = current_app.extensions.get("mongo_db")
         latest_status = get_latest_status(db)
@@ -193,6 +194,7 @@ def live_monitoring():
         context["latest_status"] = latest_status
         context["live_details_type"] = current_app.config.get("LIVE_DETAILS_TYPE", "new_tab")
         context["live_signal_settings"] = get_live_signal_settings(db)
+        context["audio_config"] = load_audio_config()
         return render_template("main/live_monitoring.html", **context)
     except Exception as e:
         current_app.logger.error(f"Error rendering live monitoring page: {e}")
@@ -749,3 +751,15 @@ def save_activity_review(activity_id):
 def serve_media(filepath):
     """Serve evidence images stored under UPLOAD_FOLDER."""
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], filepath)
+
+
+@main_bp.route("/audio/<path:filename>")
+def serve_audio(filename):
+    """
+    Serve Live Monitoring signal sound files with a long cache lifetime
+    (audio files rarely change, unlike CSS/JS which are still actively
+    developed) - so after the first play, the browser never re-fetches
+    them, keeping playback instant.
+    """
+    audio_dir = os.path.join(current_app.root_path, "static", "audio")
+    return send_from_directory(audio_dir, filename, max_age=604800)  # 7 days

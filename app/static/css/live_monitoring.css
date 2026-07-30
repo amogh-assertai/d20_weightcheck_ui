@@ -6,6 +6,31 @@
    states) that no other page uses.
 --------------------------------------------------- */
 
+/* --- Audio on/off corner indicator --- */
+.audio-status {
+    position: fixed;
+    top: 66px;
+    right: 20px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 900;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.audio-status--on {
+    color: #12C785;
+    border-color: #12C785;
+}
+
+.audio-status--off {
+    color: var(--text-muted);
+}
+
 /* --- Board section --- */
 .table-section {
     margin-top: 16px;

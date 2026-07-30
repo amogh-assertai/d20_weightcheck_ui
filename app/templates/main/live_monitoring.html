@@ -36,6 +36,8 @@
 {% endmacro %}
 
 {% block content %}
+<div id="audio-status" class="audio-status audio-status--off" title="Click to enable audio">&#128264; Audio</div>
+
 <section class="welcome">
     <h1>Live Monitoring</h1>
     <p class="welcome__subtitle">{{ client_name }}</p>
@@ -59,6 +61,103 @@
     var SIGNAL_PATTERN = {{ live_signal_settings.pattern | tojson }};
     var SIGNAL_DURATION_MS = {{ (live_signal_settings.duration_sec * 1000) | int }};
     var SIGNAL_RETAIN_COLOR = {{ 'true' if live_signal_settings.retain_color else 'false' }};
+    var AUDIO_CONFIG = {{ audio_config | tojson }};
+
+    // --- Audio on/off corner indicator ---
+    // Browsers block autoplay audio until the user has interacted with the
+    // page at least once (a policy, not a bug) - this badge shows current
+    // status and doubles as a one-click way to unlock it.
+    var SILENT_AUDIO_SRC = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    var audioEnabled = false;
+    var audioStatusEl = document.getElementById('audio-status');
+
+    function updateAudioStatusUI() {
+        if (!audioStatusEl) return;
+        if (audioEnabled) {
+            audioStatusEl.innerHTML = '&#128266; Audio On';
+            audioStatusEl.classList.add('audio-status--on');
+            audioStatusEl.classList.remove('audio-status--off');
+        } else {
+            audioStatusEl.innerHTML = '&#128264; Click to enable audio';
+            audioStatusEl.classList.add('audio-status--off');
+            audioStatusEl.classList.remove('audio-status--on');
+        }
+    }
+
+    function tryEnableAudio() {
+        var testAudio = new Audio(SILENT_AUDIO_SRC);
+        testAudio.play().then(function () {
+            audioEnabled = true;
+            updateAudioStatusUI();
+        }).catch(function () {
+            audioEnabled = false;
+            updateAudioStatusUI();
+        });
+    }
+
+    tryEnableAudio(); // works immediately if the browser already granted permission from an earlier visit
+    if (audioStatusEl) {
+        audioStatusEl.addEventListener('click', tryEnableAudio); // a real click always unlocks it
+    }
+    updateAudioStatusUI();
+
+    // Preload every configured audio file up front, so playback is instant
+    // when a real event arrives later - no network fetch at play-time.
+    // Files that don't exist yet (404) are handled gracefully - logged
+    // quietly, never thrown as an error, never breaks the page.
+    var audioCache = {};
+    var audioFileMissing = {};
+    (function preloadAudio() {
+        var seen = {};
+        Object.keys(AUDIO_CONFIG).forEach(function (tableId) {
+            Object.keys(AUDIO_CONFIG[tableId]).forEach(function (result) {
+                var entry = AUDIO_CONFIG[tableId][result];
+                if (entry && entry.file && !seen[entry.file]) {
+                    seen[entry.file] = true;
+                    var audio = new Audio('/audio/' + entry.file);
+                    audio.preload = 'auto';
+                    audio.addEventListener('error', function () {
+                        audioFileMissing[entry.file] = true;
+                        console.info('Audio file not available yet (ignored): ' + entry.file);
+                    });
+                    audioCache[entry.file] = audio;
+                }
+            });
+        });
+    })();
+
+    // Plays the configured sound for this table+result, the configured
+    // number of times, back to back. Only ever called from a live socket
+    // update (see updateCard below) - never on initial page load/refresh.
+    function playAudioForSignal(tableId, result) {
+        var tableConfig = AUDIO_CONFIG[tableId];
+        if (!tableConfig) return;
+        var entry = tableConfig[result];
+        if (!entry || !entry.file) return;
+        if (audioFileMissing[entry.file]) return; // known-missing file - skip quietly
+
+        var baseAudio = audioCache[entry.file];
+        if (!baseAudio) return;
+
+        var timesRemaining = entry.times || 1;
+        function playNext() {
+            if (timesRemaining <= 0) return;
+            timesRemaining--;
+            // Clone so rapid/overlapping triggers don't fight over one <audio> element's state.
+            var clip = baseAudio.cloneNode();
+            clip.addEventListener('ended', playNext);
+            clip.addEventListener('error', function () {
+                // Missing/broken file - stop this repeat chain quietly, no console error, no crash.
+                audioFileMissing[entry.file] = true;
+            });
+            clip.play().catch(function () {
+                // Covers both a missing file and the browser's autoplay-block
+                // policy (blocked until the user interacts with the page once) -
+                // neither is a real error, so handled silently here.
+            });
+        }
+        playNext();
+    }
 
     function badgeClassFor(result) {
         if (result === 'PASS') return 'pass';
@@ -132,6 +231,7 @@
         }
 
         applySignal(card, data.result);
+        playAudioForSignal(tableId, data.result);
     }
 
     // Real-time push: the server only ever broadcasts genuinely new data

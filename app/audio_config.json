@@ -1,0 +1,22 @@
+{
+  "table_1": {
+    "PASS": {"file": "table1_pass.mp3", "times": 1},
+    "FAIL": {"file": "table1_fail.mp3", "times": 1},
+    "MISSING_DATA": {"file": "table1_missing.mp3", "times": 1}
+  },
+  "table_2": {
+    "PASS": {"file": "table2_pass.mp3", "times": 1},
+    "FAIL": {"file": "table2_fail.mp3", "times": 1},
+    "MISSING_DATA": {"file": "table2_missing.mp3", "times": 1}
+  },
+  "table_3": {
+    "PASS": {"file": "table3_pass.mp3", "times": 2},
+    "FAIL": {"file": "table3_fail.mp3", "times": 3},
+    "MISSING_DATA": {"file": "table2_fail.mp3", "times": 3}
+  },
+  "table_4": {
+    "PASS": {"file": "table4_pass.mp3", "times": 2},
+    "FAIL": {"file": "table4_fail.mp3", "times": 3},
+    "MISSING_DATA": {"file": "table4_missing.mp3", "times": 3}
+  }
+}
