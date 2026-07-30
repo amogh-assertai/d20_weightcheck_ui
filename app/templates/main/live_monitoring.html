@@ -38,6 +38,13 @@
 {% block content %}
 <div id="audio-status" class="audio-status audio-status--off" title="Click to enable audio">&#128264; Audio</div>
 
+<div id="audio-unlock-modal" class="audio-modal" style="display: none;">
+    <div class="audio-modal__content">
+        <div class="audio-modal__icon">&#128264;</div>
+        <p class="audio-modal__text">Click anywhere to enable audio</p>
+    </div>
+</div>
+
 <section class="welcome">
     <h1>Live Monitoring</h1>
     <p class="welcome__subtitle">{{ client_name }}</p>
@@ -63,13 +70,15 @@
     var SIGNAL_RETAIN_COLOR = {{ 'true' if live_signal_settings.retain_color else 'false' }};
     var AUDIO_CONFIG = {{ audio_config | tojson }};
 
-    // --- Audio on/off corner indicator ---
+    // --- Audio on/off corner indicator + full-page unlock modal ---
     // Browsers block autoplay audio until the user has interacted with the
-    // page at least once (a policy, not a bug) - this badge shows current
-    // status and doubles as a one-click way to unlock it.
+    // page at least once (a policy, not a bug). Any click/tap/keypress
+    // ANYWHERE on this page counts as that interaction and unlocks audio -
+    // the modal below is just a clear, unmissable nudge until that happens.
     var SILENT_AUDIO_SRC = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
     var audioEnabled = false;
     var audioStatusEl = document.getElementById('audio-status');
+    var audioModalEl = document.getElementById('audio-unlock-modal');
 
     function updateAudioStatusUI() {
         if (!audioStatusEl) return;
@@ -84,21 +93,42 @@
         }
     }
 
+    function showAudioModal() {
+        if (audioModalEl) audioModalEl.style.display = 'flex';
+    }
+
+    function hideAudioModal() {
+        if (audioModalEl) audioModalEl.style.display = 'none';
+    }
+
+    function removeUnlockListeners() {
+        document.removeEventListener('click', handleUnlockAttempt);
+        document.removeEventListener('keydown', handleUnlockAttempt);
+        document.removeEventListener('touchstart', handleUnlockAttempt);
+    }
+
     function tryEnableAudio() {
         var testAudio = new Audio(SILENT_AUDIO_SRC);
         testAudio.play().then(function () {
             audioEnabled = true;
             updateAudioStatusUI();
+            hideAudioModal();
+            removeUnlockListeners();
         }).catch(function () {
             audioEnabled = false;
             updateAudioStatusUI();
+            showAudioModal();
         });
     }
 
-    tryEnableAudio(); // works immediately if the browser already granted permission from an earlier visit
-    if (audioStatusEl) {
-        audioStatusEl.addEventListener('click', tryEnableAudio); // a real click always unlocks it
+    function handleUnlockAttempt() {
+        if (!audioEnabled) tryEnableAudio();
     }
+
+    tryEnableAudio(); // succeeds immediately if the browser already granted permission from an earlier visit
+    document.addEventListener('click', handleUnlockAttempt);
+    document.addEventListener('keydown', handleUnlockAttempt);
+    document.addEventListener('touchstart', handleUnlockAttempt);
     updateAudioStatusUI();
 
     // Preload every configured audio file up front, so playback is instant

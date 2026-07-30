@@ -31,6 +31,33 @@
     color: var(--text-muted);
 }
 
+/* --- Full-page "click anywhere to enable audio" fallback modal --- */
+.audio-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    cursor: pointer;
+}
+
+.audio-modal__content {
+    text-align: center;
+    color: var(--text);
+}
+
+.audio-modal__icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+
+.audio-modal__text {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    color: var(--text);
+}
+
 /* --- Board section --- */
 .table-section {
     margin-top: 16px;
