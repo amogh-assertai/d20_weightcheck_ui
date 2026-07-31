@@ -1,0 +1,29 @@
+/* ---------------------------------------------------
+   errors.css
+   404 / 500 error pages.
+--------------------------------------------------- */
+
+/* --- Error pages (404 / 500) --- */
+.error-page {
+    text-align: center;
+    padding: clamp(60px, 14vh, 140px) 20px;
+}
+
+.error-page h1 {
+    font-size: 22px;
+    margin: 0 0 10px;
+}
+
+.error-page__body {
+    color: var(--text-muted);
+    font-size: 14px;
+    max-width: 440px;
+    margin: 0 auto 24px;
+    line-height: 1.5;
+}
+
+.error-page__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}

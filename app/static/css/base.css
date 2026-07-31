@@ -1,0 +1,397 @@
+/* ---------------------------------------------------
+   base.css
+   Theme variables, reset, top bar/nav, page layout, panels, status
+   badges, flash toasts, footer, and the shared fit-to-screen layout mode.
+   Loaded on every page.
+--------------------------------------------------- */
+
+:root {
+    --font-display: "Inter", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+html[data-theme="dark"] {
+    --bg: #0B0E11;
+    --panel: #12161C;
+    --panel-border: #1E2530;
+    --text: #E4E7EB;
+    --text-muted: #6B7280;
+    --accent: #12C7B5;      /* signal teal - "online/active" */
+    --accent-dim: #0E8F82;
+}
+
+html[data-theme="light"] {
+    --bg: #F5F6F8;
+    --panel: #FFFFFF;
+    --panel-border: #DCE0E6;
+    --text: #1A1D22;
+    --text-muted: #6B7280;
+    --accent: #0E8F82;
+    --accent-dim: #0B6E64;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* --- Top bar (brand + nav links + theme toggle, all one row) --- */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 32px;
+    border-bottom: 1px solid var(--panel-border);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.topbar__left {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.topbar__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.topbar__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+.topbar__client {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+}
+
+.topbar__right {
+    display: flex;
+    align-items: center;
+}
+
+.theme-toggle {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.theme-toggle:hover {
+    border-color: var(--accent);
+}
+
+/* --- Nav bar (Home / Live Monitoring / Settings / History) - now inline in the topbar --- */
+.navbar {
+    display: flex;
+    gap: 4px;
+}
+
+.navbar__link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.navbar__link:hover {
+    color: var(--text);
+    background: var(--panel);
+}
+
+.navbar__link.is-active {
+    color: var(--accent);
+    background: var(--panel);
+}
+
+/* --- Content layout ---
+   Fluid width instead of a small fixed cap: scales up on large/TV-size
+   displays instead of leaving big empty margins, but still caps out so
+   lines/cards don't stretch absurdly wide on ultra-large screens. */
+.content {
+    flex: 1;
+    max-width: min(1600px, 94vw);
+    width: 100%;
+    margin: 0 auto;
+    padding: clamp(20px, 2.5vw, 40px);
+}
+
+/* --- Simple placeholder for pages with no content yet --- */
+.page-placeholder {
+    text-align: center;
+    padding: clamp(60px, 12vh, 140px) 20px;
+}
+
+.page-placeholder__text {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+}
+
+/* --- Welcome section --- */
+.welcome {
+    text-align: center;
+    padding: 12px 0 8px;
+}
+
+.welcome h1 {
+    font-size: clamp(22px, 2.4vw, 34px);
+    margin: 0 0 6px;
+}
+
+.welcome__subtitle {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* --- Generic panel + empty-state (kept for reuse on future pages) --- */
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 24px;
+}
+
+.panel__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.panel__header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.panel__hint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* --- Status badges (matches the PASS/FAIL/orange/gray convention from the AI backend) --- */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge--pass {
+    background: rgba(18, 199, 133, 0.15);
+    color: #12C785;
+}
+
+.badge--fail {
+    background: rgba(232, 68, 68, 0.15);
+    color: #E84444;
+}
+
+.badge--warn {
+    background: rgba(240, 165, 45, 0.15);
+    color: #F0A52D;
+}
+
+.badge--muted {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-muted);
+}
+
+/* --- Fit-to-screen page (Activity Details only) - no page-level scrolling.
+   Header/back-link/prev-next row take their natural height; the detail-body
+   row consumes exactly whatever's left via flex, so nothing overflows the
+   viewport (History and other pages are unaffected - they still scroll
+   normally, since this only applies when body has this class). --- */
+body.page-fit-screen {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.page-fit-screen .content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 12px;
+}
+
+body.page-fit-screen .detail-body {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+}
+
+body.page-fit-screen .detail-side,
+body.page-fit-screen .detail-right-column {
+    overflow-y: auto; /* safety net only - shouldn't be needed with normal data */
+}
+
+/* Left panel only has a handful of fields right now - let it size to its own
+   content instead of stretching to fill the row (image/right column still do). */
+body.page-fit-screen .detail-side--left {
+    align-self: start;
+}
+
+body.page-fit-screen .detail-image {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+body.page-fit-screen .zoom-container {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
+body.page-fit-screen .footer {
+    display: none; /* footer would push content past the viewport - hide it here only */
+}
+
+/* --- Mobile: fit-to-screen (no page scroll) is a DESKTOP-ONLY behavior.
+   On phones, let the page scroll normally - cramming everything into one
+   screen height makes small-screen content unreadable. This resets every
+   fit-to-screen rule above back to normal document flow below 768px. --- */
+@media (max-width: 768px) {
+    body.page-fit-screen {
+        height: auto;
+        overflow: visible;
+        display: block;
+    }
+
+    body.page-fit-screen .content {
+        flex: none;
+        display: block;
+        overflow: visible;
+        padding-bottom: 0;
+    }
+
+    body.page-fit-screen .detail-body {
+        flex: none;
+    }
+
+    body.page-fit-screen .detail-side,
+    body.page-fit-screen .detail-right-column {
+        overflow-y: visible;
+    }
+
+    body.page-fit-screen .detail-image {
+        display: block;
+    }
+
+    body.page-fit-screen .zoom-container {
+        flex: none;
+        height: clamp(260px, 45vh, 420px); /* smaller on mobile - room left to scroll to the fields below */
+    }
+
+    body.page-fit-screen .footer {
+        display: block; /* not fighting for vertical space anymore - show it again */
+    }
+}
+
+/* --- Flash messages: fixed-position toast, doesn't disturb page layout
+   (important on fit-to-screen pages like Activity Details) --- */
+.flash-messages {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.flash-message {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 13px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    animation: flash-in 0.2s ease;
+}
+
+@keyframes flash-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.flash-message--success {
+    border-color: #12C785;
+    color: #12C785;
+}
+
+.flash-message--error {
+    border-color: #E84444;
+    color: #E84444;
+}
+
+/* --- Footer --- */
+.footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--panel-border);
+}
+
+/* --- Responsive --- */
+@media (max-width: 640px) {
+    .topbar {
+        padding: 14px 18px;
+    }
+    .content {
+        padding: 20px;
+    }
+
+    /* Applies everywhere (History filters, Settings, search box, etc.) -
+       iOS Safari auto-zooms in on any input with font-size under 16px,
+       which is jarring on a form with several fields in a row. */
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}

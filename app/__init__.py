@@ -36,7 +36,9 @@ def create_app(config_class=Config):
     from app import sockets  # noqa: F401
 
     # --- Register blueprints ---
-    from app.main.routes import main_bp
+    # app.main's __init__ creates the blueprint and imports every route
+    # module in the package, so all routes are attached by this point.
+    from app.main import main_bp
     app.register_blueprint(main_bp)
 
     from app.api.routes import api_bp

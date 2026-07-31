@@ -1,0 +1,98 @@
+/* ---------------------------------------------------
+   history.css
+   History page only: the results table and the Flags column badges.
+--------------------------------------------------- */
+
+/* --- History data table --- */
+.table-wrap {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--panel-border);
+    white-space: nowrap;
+}
+
+.data-table th {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* --- Flags column: compact combined indicator (discuss / system error / comment) --- */
+.flags-cell {
+    white-space: nowrap;
+}
+
+/* Comment view: reduced column set (Date/Activity#/Order Match/Diff%/Result)
+   frees up space for a wide, readable comment column - full text wraps,
+   no truncation needed since there's room now. */
+.comment-header {
+    width: 40%;
+}
+
+.comment-cell-wide {
+    white-space: normal;
+    line-height: 1.4;
+    max-width: 0; /* forces the column to respect its % width instead of growing to fit content */
+    width: 40%;
+}
+
+.flag-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 4px;
+    cursor: default;
+}
+
+.flag-badge--discuss {
+    background: rgba(59, 130, 246, 0.18);
+    color: #3B82F6;
+}
+
+.flag-badge--error {
+    background: rgba(232, 68, 68, 0.18);
+    color: #E84444;
+}
+
+.flag-badge--process {
+    background: rgba(167, 139, 250, 0.18);
+    color: #A78BFA;
+}
+
+/* Explicit "No" answer - still touched/reviewed, so it shows a badge,
+   but visually muted/outlined rather than a solid color, to distinguish
+   "reviewed, answer was No" from "reviewed, answer was Yes". */
+.flag-badge--no {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+}
+
+.flag-badge--comment {
+    background: rgba(107, 114, 128, 0.22);
+    color: var(--text-muted);
+}
+
+.flag-badge--none {
+    color: var(--text-muted);
+    background: transparent;
+}

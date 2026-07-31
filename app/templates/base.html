@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ client_name }}{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {# base.css = theme/layout/chrome (every page). forms.css = filter bars,
+       form controls, pagination (History, Settings, Analytics). Page-specific
+       sheets are loaded by each template via the extra_head block below. #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
     <script>
         // Apply saved theme before first paint, so there's no flash of the wrong theme.
         // Default stays "dark" (set in the <html> tag above) if nothing is saved yet.

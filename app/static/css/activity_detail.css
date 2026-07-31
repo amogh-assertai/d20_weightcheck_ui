@@ -1,0 +1,275 @@
+/* ---------------------------------------------------
+   activity_detail.css
+   Activity Details page only: back link, prev/next header, the
+   left/image/right layout, the zoomable image, and the review panel.
+--------------------------------------------------- */
+
+/* --- Activity detail: "Back to History" link, clearly separated from the row below --- */
+.detail-topline {
+    margin: 8px 0 4px;
+}
+
+.back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: color 0.15s ease;
+}
+
+.back-link:hover {
+    color: var(--text);
+}
+
+/* --- Activity detail: prev/next + camera/time header --- */
+.detail-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 4px 0 4px;
+}
+
+.detail-nav {
+    flex: 0 0 140px;
+}
+
+.detail-nav--next {
+    text-align: right;
+}
+
+.nav-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: border-color 0.15s ease;
+}
+
+.nav-btn:hover {
+    border-color: var(--accent);
+}
+
+.detail-header-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.detail-header-center__camera {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.detail-header-center__time {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* --- Activity detail: left panel / image / right column ---
+   Side panels are a fixed narrower width so the image dominates the row.
+   The right column holds BOTH the info panel and the review form, stacked. */
+.detail-body {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) 1fr minmax(240px, 300px);
+    gap: 20px;
+    align-items: start;
+    margin-top: 12px;
+}
+
+.detail-side {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.field-row__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.field-row__value {
+    font-size: 13px;
+    word-break: break-word;
+}
+
+/* The right column stacks the info panel + review form vertically */
+.detail-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+}
+
+/* --- Review panel (marked for discussion / system error / comment) ---
+   Narrower column now, so labels stack above their controls instead of
+   sitting side by side. */
+.review-panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.review-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.review-group__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.toggle-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.toggle-buttons__option {
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.toggle-buttons__option input {
+    display: none;
+}
+
+.toggle-buttons__option.is-selected {
+    border-color: var(--accent);
+    background: rgba(18, 199, 133, 0.12);
+    color: var(--accent);
+}
+
+.review-group--comment textarea {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    resize: vertical;
+    width: 100%;
+}
+
+/* Stack the 3-column detail layout on narrower/tablet screens */
+@media (max-width: 900px) {
+    .detail-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Mobile: a genuinely reordered layout, not just the same 3 columns
+   squeezed into 1. Desktop stays exactly as-is above this breakpoint -
+   mobile is just for a quick glance, so priority is: see the image and
+   result fast, everything else follows below. --- */
+@media (max-width: 640px) {
+    /* Image first - the thing you actually want to glance at */
+    .detail-image { order: -3; }
+    /* Then the left panel (order/weight numbers) */
+    .detail-side--left { order: -2; }
+    /* Then the right column (activity/reasoning fields + review form) */
+    .detail-right-column { order: -1; }
+
+    .detail-top {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .detail-header-center {
+        order: -1;
+        flex: 1 1 100%;
+        margin-bottom: 4px;
+    }
+
+    .detail-nav {
+        flex: 1 1 45%;
+    }
+
+    .detail-nav--next {
+        text-align: right;
+    }
+
+    .nav-btn {
+        display: block;
+        width: 100%;
+        padding: 12px; /* bigger tap target on touch screens */
+        box-sizing: border-box;
+    }
+
+    .toggle-buttons__option {
+        flex: 1;
+        text-align: center;
+        padding: 10px; /* bigger tap target */
+    }
+
+    .review-form textarea {
+        font-size: 16px; /* prevents iOS Safari from auto-zooming in on focus */
+    }
+}
+
+/* --- Activity detail page: image + fields side by side (rough layout for now) --- */
+.zoom-container {
+    position: relative;
+    width: 100%;
+    height: clamp(420px, 70vh, 780px);
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #000;
+}
+
+.zoom-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform-origin: center center;
+    transition: transform 0.05s linear;
+    user-select: none;
+    -webkit-user-drag: none;
+    cursor: default;
+}
+
+.zoom-hint {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}

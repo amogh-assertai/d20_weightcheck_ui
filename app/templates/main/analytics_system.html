@@ -2,6 +2,10 @@
 
 {% block title %}{{ client_name }} · System Analytics{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
+{% endblock %}
+
 {% block content %}
 <section class="welcome">
     <h1>Analytics</h1>

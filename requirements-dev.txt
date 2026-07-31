@@ -1,0 +1,8 @@
+# Test-only dependencies. Install alongside requirements.txt for development:
+#   pip install -r requirements.txt -r requirements-dev.txt
+#
+# Deliberately NOT in requirements.txt - production doesn't need these, and
+# mongomock in particular should never be reachable from a real deployment.
+
+pytest==9.1.1
+mongomock==4.3.0

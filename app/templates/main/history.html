@@ -1,6 +1,11 @@
 {% extends "base.html" %}
+{% from "_macros.html" import badge_class, yes_no_class %}
 
 {% block title %}{{ client_name }} · History{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+{% endblock %}
 
 {% macro sort_link(field, label, selected_sort, selected_order) %}
 {% set args = request.args.to_dict() %}
@@ -137,13 +142,13 @@
                     <td>{{ a.get('timestamp_display', '-') }}</td>
                     <td>{{ a.get('activity_number', '-') }}</td>
                     <td>
-                        <span class="badge badge--{{ 'pass' if matching == 'YES' else 'fail' if matching == 'NO' else 'muted' }}">
+                        <span class="badge badge--{{ yes_no_class(matching) }}">
                             {{ matching }}
                         </span>
                     </td>
                     <td>{{ a.get('weight_difference_percent', '-') }}</td>
                     <td>
-                        <span class="badge badge--{{ 'pass' if result == 'PASS' else 'fail' if result == 'FAIL' else 'warn' if result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">
+                        <span class="badge badge--{{ badge_class(result) }}">
                             {{ result }}
                         </span>
                     </td>
@@ -184,7 +189,7 @@
                     <td>{{ a.get('activity_number', '-') }}</td>
                     <td>{{ a.get('actual_order_number', a.get('expected_order_number', '-')) }}</td>
                     <td>
-                        <span class="badge badge--{{ 'pass' if matching == 'YES' else 'fail' if matching == 'NO' else 'muted' }}">
+                        <span class="badge badge--{{ yes_no_class(matching) }}">
                             {{ matching }}
                         </span>
                     </td>
@@ -192,7 +197,7 @@
                     <td>{{ a.get('actual_weight', '-') }}</td>
                     <td>{{ a.get('weight_difference_percent', '-') }}</td>
                     <td>
-                        <span class="badge badge--{{ 'pass' if result == 'PASS' else 'fail' if result == 'FAIL' else 'warn' if result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] else 'muted' }}">
+                        <span class="badge badge--{{ badge_class(result) }}">
                             {{ result }}
                         </span>
                     </td>

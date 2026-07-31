@@ -2,6 +2,10 @@
 
 {% block title %}{{ client_name }} · Not Found{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/errors.css') }}">
+{% endblock %}
+
 {% block content %}
 <section class="error-page">
     <h1>Page not found</h1>

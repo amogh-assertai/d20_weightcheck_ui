@@ -1,0 +1,55 @@
+{#
+  _macros.html
+  ------------
+  Shared Jinja macros. Import with:
+      {% from "_macros.html" import badge_class %}
+
+  Keeps the result -> colour mapping in one place. It was previously inlined
+  as the same 4-branch ternary in six spots across three templates, so any
+  change to the colour convention meant editing all six.
+#}
+
+{#
+  Maps a validation/weight/order result to its badge colour class.
+    PASS                              -> pass  (green)
+    FAIL                              -> fail  (red)
+    MISSING_DATA / INVALID_WEIGHT_DATA -> warn  (orange - inconclusive, not
+                                                a confirmed failure)
+    anything else / missing            -> muted (grey)
+
+  Mirrors badgeClassFor() in live_monitoring.js, which does the same mapping
+  client-side for socket-driven updates.
+#}
+{%- macro badge_class(result) -%}
+{%- if result == 'PASS' -%}pass
+{%- elif result == 'FAIL' -%}fail
+{%- elif result in ['MISSING_DATA', 'INVALID_WEIGHT_DATA'] -%}warn
+{%- else -%}muted
+{%- endif -%}
+{%- endmacro -%}
+
+
+{#
+  Yes/No/-- values (order_number_matching, and the review flags).
+    YES -> pass, NO -> fail, anything else -> muted
+#}
+{%- macro yes_no_class(value) -%}
+{%- if value == 'YES' -%}pass
+{%- elif value == 'NO' -%}fail
+{%- else -%}muted
+{%- endif -%}
+{%- endmacro -%}
+
+
+{#
+  Strict PASS/FAIL only - used for weight_result, where MISSING / INVALID
+  deliberately fall through to muted rather than warn. Kept separate from
+  badge_class() on purpose: badge_class maps MISSING_DATA to warn (orange),
+  which would be wrong here.
+#}
+{%- macro pass_fail_class(value) -%}
+{%- if value == 'PASS' -%}pass
+{%- elif value == 'FAIL' -%}fail
+{%- else -%}muted
+{%- endif -%}
+{%- endmacro -%}

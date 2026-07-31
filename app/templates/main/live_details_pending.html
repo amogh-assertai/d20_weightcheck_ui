@@ -4,6 +4,8 @@
 
 {% block extra_head %}
 <meta http-equiv="refresh" content="5">
+{# reuses the .error-page layout from errors.css #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/errors.css') }}">
 {% endblock %}
 
 {% block content %}

@@ -19,47 +19,95 @@ cv_webapp/
 │   ├── extensions.py          # MongoDB client + SocketIO instance setup
 │   ├── sockets.py             # WebSocket push: backend -> browser (Live Monitoring only)
 │   ├── live_status.py         # Latest-per-table data (reads/writes MongoDB directly)
-│   ├── settings_store.py      # Live Monitoring signal settings (blink/solid/duration/retain), in MongoDB
+│   ├── settings_store.py      # Live Monitoring signal settings, in MongoDB
 │   ├── audio_config.py        # Loads app/audio_config.json
-│   ├── audio_config.json      # EDIT THIS to change which sound plays for which table/result
-│   ├── main/                  # Blueprint: all UI pages
-│   │   └── routes.py          # Home, Live Monitoring, Settings, History, Activity Details,
-│   │                          # Analytics (System + Accuracy), media/audio serving
+│   ├── audio_config.json      # EDIT THIS to change sounds per table/result
+│   │
+│   ├── main/                  # Blueprint: all UI pages, split by feature
+│   │   ├── __init__.py            # creates main_bp, imports the route modules
+│   │   ├── shared.py              # template context, parsing, sort key, filter query
+│   │   ├── routes.py              # home, health, settings, media/audio serving
+│   │   ├── live_routes.py         # Live Monitoring board + details lookup
+│   │   ├── history_routes.py      # History table, Activity Details, review saving
+│   │   └── analytics_routes.py    # Analytics (System + Accuracy)
+│   │
 │   ├── api/                   # Blueprint: endpoints the AI device calls
-│   │   └── routes.py          # POST /activities (full record), POST /webhook/activity-result (live signal)
+│   │   ├── __init__.py
+│   │   └── routes.py              # POST /activities, POST /webhook/activity-result
+│   │
 │   ├── static/
-│   │   ├── css/
-│   │   │   ├── style.css          # Everything except Live Monitoring
-│   │   │   └── live_monitoring.css # Live Monitoring page only (big cards, signal states, audio UI)
+│   │   ├── css/                   # one base sheet + one per page area
+│   │   │   ├── base.css               # theme, chrome, layout, badges, flash, fit-to-screen
+│   │   │   ├── forms.css              # filter bars, form controls, pagination
+│   │   │   ├── history.css            # results table + Flags column
+│   │   │   ├── activity_detail.css    # detail layout, zoom viewer, review panel
+│   │   │   ├── analytics.css          # stat cards, camera bars, accuracy flowchart
+│   │   │   ├── errors.css             # 404 / 500 / details-pending
+│   │   │   └── live_monitoring.css    # the board, signal states, audio UI
 │   │   ├── js/
-│   │   │   ├── main.js            # Theme toggle, flash-message auto-dismiss, toggle-button feedback
-│   │   │   └── socket.io.min.js    # Self-hosted client (do NOT load this from a CDN - see note below)
-│   │   └── audio/              # Put your .mp3 files here (names must match audio_config.json)
+│   │   │   ├── main.js                # theme toggle, flash dismiss, toggle buttons
+│   │   │   ├── live_monitoring.js     # socket updates, signal, audio
+│   │   │   ├── activity_detail.js     # image zoom/pan, arrow-key navigation
+│   │   │   └── socket.io.min.js       # self-hosted client (do NOT use a CDN - see below)
+│   │   └── audio/                 # your .mp3 files (names must match audio_config.json)
+│   │
 │   ├── templates/
-│   │   ├── base.html               # Shared layout: top bar + nav + theme toggle + flash messages
+│   │   ├── base.html              # shared layout + flash messages
+│   │   ├── _macros.html           # shared Jinja macros (result -> colour class)
 │   │   ├── errors/404.html, 500.html
 │   │   └── main/
-│   │       ├── home.html                  # Placeholder for now
-│   │       ├── live_monitoring.html       # Real-time board (4 table cards)
-│   │       ├── settings.html              # Live Monitoring signal controls
-│   │       ├── history.html               # Filterable/searchable/sortable/paginated activity log
-│   │       ├── activity_detail.html       # Prev/next, zoomable image, review form
-│   │       ├── live_details_pending.html  # "Not uploaded yet, try again" page
-│   │       ├── analytics_system.html      # Analytics > System Analytics
-│   │       └── analytics_accuracy.html    # Analytics > Accuracy (flowchart)
+│   │       ├── home.html, settings.html
+│   │       ├── live_monitoring.html       # + #live-monitoring-config JSON block
+│   │       ├── history.html
+│   │       ├── activity_detail.html
+│   │       ├── live_details_pending.html
+│   │       ├── analytics_system.html
+│   │       └── analytics_accuracy.html
 │   └── utils/
-│       ├── helpers.py         # Generic helpers + shared timestamp formatters
-│       └── logger.py          # Centralized logging setup
-├── instance/uploads/          # Untracked, evidence images land here
+│       ├── helpers.py         # generic helpers + timestamp formatters (24h and 12h)
+│       └── logger.py          # centralized logging setup
+│
+├── tests/                     # pytest regression suite (240 tests)
+│   ├── conftest.py                # fixtures: app, client, socket client, sample data
+│   ├── test_pages.py              # every route renders, shared chrome present
+│   ├── test_api_ingestion.py      # POST /api/activities
+│   ├── test_api_webhook.py        # webhook validation, dedup, socket broadcast
+│   ├── test_history.py            # filters, search, sort, pagination, flags
+│   ├── test_activity_detail.py    # detail page, prev/next, review save logic
+│   ├── test_analytics.py          # system totals + every accuracy rule
+│   ├── test_live_monitoring.py    # board, settings-driven signal, audio, lookup
+│   ├── test_static_assets.py      # CSS/JS wiring after the asset split
+│   ├── test_macros.py             # shared Jinja macros
+│   └── test_infrastructure.py     # error pages, helpers, multi-worker consistency
+│
+├── instance/uploads/          # untracked, evidence images land here
 ├── .env / .env.example
 ├── .gitignore
-├── requirements.txt
-└── run.py                     # Entry point (eventlet + SocketIO)
+├── pytest.ini
+├── requirements.txt           # production
+├── requirements-dev.txt       # pytest + mongomock (test only)
+└── run.py                     # entry point (eventlet + SocketIO)
 ```
 
-**Cleanup note:** `app/templates/main/analytics.html` is a leftover placeholder
-from an earlier iteration and is no longer referenced by any route (`/analytics`
-redirects straight to `/analytics/system` now) — safe to delete.
+### Why it's split this way
+
+- **Route modules by feature.** `main/routes.py` had grown to 765 lines
+  covering six unrelated areas. Each module is now one feature; the blueprint
+  itself is created in `main/__init__.py` so every module can import it
+  without a circular import (the standard Flask pattern for splitting one
+  blueprint across files).
+- **One base stylesheet + one per page area.** `style.css` had reached 1309
+  lines, all of it loaded on every page. `base.css` and `forms.css` load
+  globally; each page pulls only its own sheet via the `extra_head` block.
+- **No inline JavaScript.** The Live Monitoring script was 210 lines inside
+  the template, so the browser re-downloaded it on every page load and it
+  couldn't be linted. It now lives in `static/js/live_monitoring.js`, with
+  the four server-supplied values passed through a
+  `#live-monitoring-config` JSON block instead of being templated in.
+- **Shared macros for colour mapping.** The `result -> colour class` ternary
+  was inlined six times across three templates. Note `badge_class()` and
+  `pass_fail_class()` are deliberately different (`MISSING_DATA` -> orange
+  vs `MISSING` -> grey) and must not be merged - there's a test guarding it.
 
 ## Running locally
 
@@ -192,6 +240,37 @@ Gunicorn workers (each has separate memory, so one worker's webhook update
 was invisible to another worker's requests, causing data to appear to
 randomly "revert"). Fixed by making MongoDB the single shared source of
 truth for every read.
+
+## Testing
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
+```
+
+240 tests, no external services needed - `mongomock` provides an in-memory
+MongoDB, and Flask-SocketIO's test client covers the WebSocket path.
+
+What's covered: every page rendering, both AI-device endpoints (including
+webhook duplicate suppression and socket broadcast), all History
+filters/search/sort/pagination, Activity Details prev/next and the
+`result_reviewed` logic, every Accuracy calculation rule (including the
+both-marked-Yes edge case), settings-driven signal behaviour, audio config
+wiring, static-asset wiring, error pages, and the multi-worker consistency
+guarantee.
+
+Several tests exist specifically to guard against regressions that already
+happened once - each is commented with what it's protecting. Notably:
+webhook duplicates must not re-trigger signals; live status must be read
+from MongoDB (not per-process memory); the Socket.IO client must be
+self-hosted; retained colour must survive a page refresh without replaying
+the blink; and audio must only fire on a live socket update, never on
+render.
+
+One `EventletDeprecationWarning` appears at import time and is expected -
+eventlet is still the supported async worker for Flask-SocketIO. It's
+raised during collection, before pytest's warning filters engage, so it
+can't be filtered cleanly; it's cosmetic.
 
 ### Deployment requirement
 

@@ -1,0 +1,151 @@
+"""
+app/main/shared.py
+-------------------
+Helpers shared by the route modules in this package: template context,
+activity-data parsing, and the one filter/search/sort query used by both
+the History page and Activity Details' prev/next navigation.
+
+Lives here (rather than app/utils/) because everything in this file is
+specific to the activity-data domain and these page routes - app/utils/
+holds genuinely generic helpers.
+"""
+
+from datetime import datetime, timezone
+
+from flask import current_app, request
+
+
+def base_context():
+    """Shared template variables used by every page in this blueprint."""
+    return {
+        "app_name": current_app.config["APP_NAME"],
+        "client_name": current_app.config["CLIENT_NAME"],
+        "max_clients": current_app.config["MAX_CLIENTS"],
+    }
+
+
+def parse_activity_date(timestamp_value):
+    """Parse an activity's ISO timestamp string into just its date, or None if unparseable."""
+    if not timestamp_value:
+        return None
+    try:
+        return datetime.fromisoformat(str(timestamp_value).replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def parse_numeric(value):
+    """Parse a numeric string, optionally with a trailing '%' (e.g. '24.23%' or '9.800'), into a float. Returns None if not parseable."""
+    if value is None:
+        return None
+    try:
+        return float(str(value).replace("%", "").strip())
+    except ValueError:
+        return None
+
+
+def sort_key(doc, field):
+    """
+    Sort key that handles numeric-looking values (weights, percentages stored as
+    strings like '24.23%') and falls back to case-insensitive text sorting for
+    everything else (camera names, order numbers, ISO timestamp strings).
+    """
+    value = doc.get(field, "")
+    try:
+        cleaned = str(value).replace("%", "").strip()
+        return (0, float(cleaned))
+    except (TypeError, ValueError):
+        return (1, str(value).lower())
+
+
+def query_activities(db):
+    """
+    Shared filter/search/sort logic used by both the History page and the
+    Activity Detail page's prev/next navigation, so both always agree on
+    "what's in the current filtered set" and in what order.
+    Reads all filter/search/sort values from request.args.
+    """
+    table_filter = request.args.get("table", "all")
+    result_filter = request.args.get("result", "all")
+    search_term = request.args.get("search", "").strip()
+    ocr_wrong_filter = request.args.get("ocr_wrong", "all")   # "all" / "YES" / "NO"
+    discuss_filter = request.args.get("discuss", "all")       # "all" / "YES" / "NO"
+    has_comment_filter = request.args.get("has_comment", "all")  # "all" / "present" / "absent"
+    sort_field = request.args.get("sort", "timestamp")
+    sort_order = request.args.get("order", "desc")
+
+    today = datetime.now(timezone.utc).date()
+    default_start = today
+    start_date_str = request.args.get("start_date", default_start.isoformat())
+    end_date_str = request.args.get("end_date", today.isoformat())
+
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        start_date = default_start
+        start_date_str = start_date.isoformat()
+
+    try:
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        end_date = today
+        end_date_str = end_date.isoformat()
+
+    camera_options = []
+    filtered = []
+
+    if db is not None:
+        camera_options = sorted(db["all_activities"].distinct("camera_name"))
+
+        # Mongo-side filter: fields that are simple exact matches
+        mongo_query = {}
+        if table_filter != "all":
+            mongo_query["camera_name"] = table_filter
+        if result_filter != "all":
+            mongo_query["validation_result"] = result_filter
+        if ocr_wrong_filter in ("YES", "NO"):
+            mongo_query["mark_ocr_wrong"] = ocr_wrong_filter
+        if discuss_filter in ("YES", "NO"):
+            mongo_query["mark_discuss"] = discuss_filter
+        if has_comment_filter == "present":
+            mongo_query["review_comment"] = {"$exists": True, "$nin": ["", None]}
+        elif has_comment_filter == "absent":
+            mongo_query["$or"] = [
+                {"review_comment": {"$exists": False}},
+                {"review_comment": ""},
+                {"review_comment": None},
+            ]
+
+        all_matching = list(db["all_activities"].find(mongo_query))
+
+        # Date range + text search applied in Python - timestamps are stored as
+        # ISO strings (not native Mongo dates), so parsing here is more robust
+        # than a string-range Mongo query.
+        for doc in all_matching:
+            doc_date = parse_activity_date(doc.get("timestamp"))
+            if doc_date is not None and not (start_date <= doc_date <= end_date):
+                continue
+
+            if search_term:
+                haystack = " ".join(str(doc.get(f, "")) for f in
+                                     ["expected_order_number", "actual_order_number", "activity_number"])
+                if search_term.lower() not in haystack.lower():
+                    continue
+
+            filtered.append(doc)
+
+        filtered.sort(key=lambda d: sort_key(d, sort_field), reverse=(sort_order == "desc"))
+
+    meta = {
+        "selected_table": table_filter,
+        "selected_result": result_filter,
+        "search_term": search_term,
+        "selected_ocr_wrong": ocr_wrong_filter,
+        "selected_has_comment": has_comment_filter,
+        "selected_discuss": discuss_filter,
+        "selected_sort": sort_field,
+        "selected_order": sort_order,
+        "start_date": start_date_str,
+        "end_date": end_date_str,
+    }
+    return filtered, camera_options, meta

@@ -1,0 +1,215 @@
+/* ---------------------------------------------------
+   forms.css
+   Filter bars, the Settings form, toggle buttons, pagination, and the
+   View Details button. Shared by History, Settings, and Analytics.
+--------------------------------------------------- */
+
+/* --- History filters bar --- */
+.filters {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+}
+
+.filters__fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.filters__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 4px;
+    border-top: 1px solid var(--panel-border);
+}
+
+.filters__group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filters__group label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.filters__group select,
+.filters__group input[type="date"],
+.filters__group input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--font-display);
+}
+
+/* Native date-picker calendar icon is dark by default and nearly invisible
+   on the dark theme - invert it so it's actually visible/clickable. */
+.filters__group input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+.filters__group--search input {
+    min-width: 220px;
+}
+
+.filters__apply {
+    background: var(--accent);
+    color: #04201C;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 18px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.filters__apply:hover {
+    opacity: 0.85;
+}
+
+.filters__reset {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 9px 16px;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.filters__reset:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+/* --- Sortable column headers --- */
+.sort-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sort-link:hover {
+    color: var(--text);
+}
+
+.sort-arrow {
+    margin-left: 4px;
+    color: var(--accent);
+}
+
+/* --- Settings page form (reuses .filters__group / .toggle-buttons / .filters__apply styling) --- */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: flex-start;
+    max-width: 420px;
+}
+
+.settings-form input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--font-display);
+    width: 120px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    border: 1px dashed var(--panel-border);
+    border-radius: 6px;
+}
+
+.empty-state__title {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--text);
+    margin: 0 0 8px;
+}
+
+.empty-state__body {
+    font-size: 13px;
+    color: var(--text-muted);
+    max-width: 420px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* --- Pagination --- */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pagination__info {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--font-mono);
+}
+
+.pagination__controls {
+    display: flex;
+    gap: 10px;
+}
+
+.pagination__link {
+    color: var(--text);
+    text-decoration: none;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    transition: border-color 0.15s ease;
+}
+
+.pagination__link:hover {
+    border-color: var(--accent);
+}
+
+/* --- View Details button in the table --- */
+.btn-view {
+    display: inline-block;
+    padding: 5px 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: var(--accent);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    transition: border-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn-view:hover {
+    border-color: var(--accent);
+}
