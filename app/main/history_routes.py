@@ -6,12 +6,16 @@ and saving the human review fields.
 """
 
 import os
+from datetime import datetime, timezone
+from io import BytesIO
 
 from bson import ObjectId
 from bson.errors import InvalidId
 from flask import (
-    current_app, flash, redirect, render_template, request, url_for,
+    current_app, flash, redirect, render_template, request, send_file, url_for,
 )
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 
 from app.main import main_bp
 from app.main.shared import base_context, query_activities
@@ -19,6 +23,44 @@ from app.utils.helpers import format_timestamp
 
 ALLOWED_PER_PAGE = (25, 50, 100)
 DEFAULT_PER_PAGE = 25
+
+# Never export these:
+#  - _id/image_path/raw_image_path: not useful in a spreadsheet, and the
+#    image itself was explicitly out of scope
+#  - mode: not wanted in the export
+#  - api_id/api_image_path/uploaded_at: these are sync-bookkeeping fields
+#    the LOCAL uploader script adds to its own copy after a successful
+#    upload - they aren't meant to be business data, they just come through
+#    as "extra fields, stored as-is" if a document happens to carry them.
+EXPORT_EXCLUDED_FIELDS = {
+    "_id", "image_path", "raw_image_path", "mode",
+    "api_id", "api_image_path", "uploaded_at",
+}
+
+# Column headers that shouldn't just be the field name title-cased -
+# mark_ocr_wrong is labelled "System error" everywhere else in the UI, so
+# the export header should say the same thing, not "Mark Ocr Wrong".
+EXPORT_HEADER_OVERRIDES = {
+    "mark_ocr_wrong": "Mark System Error",
+}
+
+# Fields that hold a raw timestamp string and should be shown formatted
+# (e.g. "24 Jul 2026, 22:28:48"), not MongoDB's raw ISO/BSON value.
+EXPORT_DATETIME_FIELDS = {"timestamp", "created_at"}
+
+# Preferred column order for the export - anything else found on a document
+# (custom/future fields) is appended afterwards, sorted alphabetically, so
+# nothing is ever silently dropped even if the schema grows.
+EXPORT_PREFERRED_FIELD_ORDER = [
+    "camera_id", "camera_name", "activity_number",
+    "expected_order_number", "actual_order_number", "order_number_matching",
+    "order_number_result", "order_number_reason",
+    "expected_weight", "actual_weight", "weight_difference", "weight_difference_percent",
+    "weight_result", "weight_reason",
+    "validation_result", "validation_reason",
+    "timestamp", "created_at",
+    "mark_discuss", "mark_ocr_wrong", "mark_process_error", "review_comment", "result_reviewed",
+]
 
 
 @main_bp.route("/history")
@@ -86,6 +128,82 @@ def history():
     except Exception as e:
         current_app.logger.error(f"Error rendering history page: {e}")
         return "Something went wrong loading history.", 500
+
+
+@main_bp.route("/history/export")
+def export_history():
+    """
+    Export the CURRENTLY FILTERED set (same table/date/result/search/review
+    filters as the History page, via the same query_activities() helper -
+    not just the current page) to an .xlsx file. No image data - every
+    other field on the activity, including the review fields (comments,
+    marked-for-discussion, etc.), is included.
+
+    The frontend shows a confirmation modal before hitting this route,
+    warning that only the active filters' results will be exported - this
+    route itself doesn't second-guess that; it exports whatever the query
+    string says, in full (no pagination limit).
+    """
+    db = current_app.extensions.get("mongo_db")
+    if db is None:
+        return "Database not configured.", 503
+
+    try:
+        filtered, _camera_options, _meta = query_activities(db)
+    except Exception as e:
+        current_app.logger.error(f"Error building export data set: {e}")
+        return "Something went wrong preparing the export.", 500
+
+    # Column order: preferred fields first, then anything else found on any
+    # document (alphabetical) - so a custom/future field is never silently
+    # dropped, it just lands at the end instead of a fixed position.
+    present_fields = set()
+    for doc in filtered:
+        present_fields.update(doc.keys())
+    present_fields -= EXPORT_EXCLUDED_FIELDS
+
+    if present_fields:
+        ordered = [f for f in EXPORT_PREFERRED_FIELD_ORDER if f in present_fields]
+        remaining = sorted(present_fields - set(ordered))
+        columns = ordered + remaining
+    else:
+        # Zero matching activities - still produce a valid file with a
+        # sensible header row (not a headerless/broken spreadsheet).
+        columns = list(EXPORT_PREFERRED_FIELD_ORDER)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Activities"
+    ws.append([
+        EXPORT_HEADER_OVERRIDES.get(c, c.replace("_", " ").title())
+        for c in columns
+    ])
+
+    for doc in filtered:
+        row = []
+        for col in columns:
+            value = doc.get(col, "")
+            if col in EXPORT_DATETIME_FIELDS and value:
+                value = format_timestamp(value)
+            elif isinstance(value, (dict, list)):
+                value = str(value)  # keep exportable - Excel cells can't hold nested objects
+            row.append(value)
+        ws.append(row)
+
+    for i, col in enumerate(columns, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = max(12, min(40, len(col) + 4))
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"activity_history_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @main_bp.route("/history/activity/<activity_id>")
