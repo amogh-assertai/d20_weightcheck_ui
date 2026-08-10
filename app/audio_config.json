@@ -10,12 +10,12 @@
     "MISSING_DATA": {"file": "table2_missing.mp3", "times": 1}
   },
   "table_3": {
-    "PASS": {"file": "table3_pass.mp3", "times": 2},
+    "PASS": {"file": "1-second-of-silence.mp3", "times": 1},
     "FAIL": {"file": "table3_fail.mp3", "times": 3},
     "MISSING_DATA": {"file": "table2_fail.mp3", "times": 3}
   },
   "table_4": {
-    "PASS": {"file": "table4_pass.mp3", "times": 2},
+    "PASS": {"file": "1-second-of-silence.mp3", "times": 1},
     "FAIL": {"file": "table4_fail.mp3", "times": 3},
     "MISSING_DATA": {"file": "table4_missing.mp3", "times": 3}
   }
