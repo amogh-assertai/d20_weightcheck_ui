@@ -68,7 +68,7 @@ def query_activities(db):
     table_filter = request.args.get("table", "all")
     result_filter = request.args.get("result", "all")
     search_term = request.args.get("search", "").strip()
-    ocr_wrong_filter = request.args.get("ocr_wrong", "all")   # "all" / "YES" / "NO"
+    error_type_filter = request.args.get("error_type", "all")  # "all" / SYSTEM_ERROR / PROCESS_ERROR / BOTH / ALL_OK
     discuss_filter = request.args.get("discuss", "all")       # "all" / "YES" / "NO"
     has_comment_filter = request.args.get("has_comment", "all")  # "all" / "present" / "absent"
     sort_field = request.args.get("sort", "timestamp")
@@ -110,8 +110,8 @@ def query_activities(db):
             mongo_query["camera_name"] = table_filter
         if result_filter != "all":
             mongo_query["validation_result"] = result_filter
-        if ocr_wrong_filter in ("YES", "NO"):
-            mongo_query["mark_ocr_wrong"] = ocr_wrong_filter
+        if error_type_filter != "all":
+            mongo_query["error_type"] = error_type_filter
         if discuss_filter in ("YES", "NO"):
             mongo_query["mark_discuss"] = discuss_filter
         if has_comment_filter == "present":
@@ -147,7 +147,7 @@ def query_activities(db):
         "selected_table": table_filter,
         "selected_result": result_filter,
         "search_term": search_term,
-        "selected_ocr_wrong": ocr_wrong_filter,
+        "selected_error_type": error_type_filter,
         "selected_has_comment": has_comment_filter,
         "selected_discuss": discuss_filter,
         "selected_sort": sort_field,

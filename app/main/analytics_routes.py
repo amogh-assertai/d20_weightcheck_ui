@@ -166,21 +166,23 @@ def analytics_system():
 def analytics_accuracy():
     """
     Accuracy Analytics - a dynamic metric that depends on ongoing human
-    review of FAIL/MISSING_DATA activities (System Error / Process Error
-    markings), NOT a fixed number. See the calculation breakdown rendered
-    directly on the page - the formula and every intermediate count are
-    shown, not just the final percentage, since this changes as review
-    progresses.
+    review of FAIL/MISSING_DATA activities (the error_type field), NOT a
+    fixed number. See the calculation breakdown rendered directly on the
+    page - the formula and every intermediate count are shown, not just the
+    final percentage, since this changes as review progresses.
+
+    error_type is a single consolidated field (SYSTEM_ERROR / PROCESS_ERROR
+    / BOTH / ALL_OK / untouched) - it replaced two separate mark_ocr_wrong /
+    mark_process_error fields that could disagree with each other (e.g.
+    both marked Yes had no defined meaning, needing an inferred tiebreak).
+    That ambiguity is gone now: BOTH is an explicit value, not a guess.
 
     Rules (also explained on the page itself):
     - PASS is always counted as correct.
-    - FAIL/MISSING_DATA is only included if at least one of System Error /
-      Process Error has been marked (Yes or No) - if both are still
-      untouched, it's excluded (pending review).
-    - Of the reviewed ones: System Error = Yes -> incorrect. Process Error
-      = Yes, or both marked No -> correct.
-    - If both are marked Yes on the same activity, System Error takes
-      priority (counted as incorrect).
+    - FAIL/MISSING_DATA is only included if error_type has been set at all -
+      if it's still untouched, it's excluded (pending review).
+    - error_type == SYSTEM_ERROR or BOTH -> incorrect.
+      error_type == PROCESS_ERROR or ALL_OK -> correct.
 
     Note: this page intentionally still treats anything outside PASS/FAIL/
     MISSING_DATA as "not part of the accuracy calculation" (skipped, not
@@ -225,16 +227,15 @@ def analytics_accuracy():
                 else:
                     continue  # unexpected/other value - not part of the pass/fail/missing buckets
 
-                system_error = doc.get("mark_ocr_wrong")
-                process_error = doc.get("mark_process_error")
+                error_type = doc.get("error_type")
 
-                if system_error is None and process_error is None:
+                if error_type is None:
                     unmarked_non_pass += 1
                 else:
                     reviewed_non_pass += 1
-                    if system_error == "YES":
+                    if error_type in ("SYSTEM_ERROR", "BOTH"):
                         system_error_count += 1
-                    else:
+                    else:  # PROCESS_ERROR or ALL_OK
                         correct_non_pass += 1
         except Exception as e:
             current_app.logger.error(f"Error computing accuracy analytics: {e}")

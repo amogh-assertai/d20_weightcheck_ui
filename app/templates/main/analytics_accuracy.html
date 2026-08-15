@@ -119,12 +119,12 @@
 
                 <div class="flow-row">
                     <div class="flow-node flow-node--fail">
-                        <span class="flow-node__label">System Error</span>
+                        <span class="flow-node__label">System Error / Both</span>
                         <span class="flow-node__value">{{ system_error_count }}</span>
                         <span class="flow-node__note">Incorrect</span>
                     </div>
                     <div class="flow-node flow-node--pass">
-                        <span class="flow-node__label">Process Error / Confirmed OK</span>
+                        <span class="flow-node__label">Process Error / All OK</span>
                         <span class="flow-node__value">{{ correct_non_pass }}</span>
                         <span class="flow-node__note">Correct</span>
                     </div>
@@ -153,8 +153,7 @@
 
         <p class="accuracy-explain__note">
             {{ unmarked_non_pass }} activit{{ 'y is' if unmarked_non_pass == 1 else 'ies are' }} excluded above (not yet reviewed) -
-            this number will change as your team finishes marking them. If an activity is marked <code>Yes</code> for both
-            System Error and Process Error, System Error takes priority (counted as incorrect).
+            this number will change as your team finishes marking them.
         </p>
     </div>
 </section>

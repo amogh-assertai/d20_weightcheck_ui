@@ -116,37 +116,29 @@
 
                 <div class="review-group">
                     <span class="review-group__label">Marked for discussion</span>
-                    <div class="toggle-buttons">
-                        <label class="toggle-buttons__option{% if activity.get('mark_discuss') == 'YES' %} is-selected{% endif %}">
-                            <input type="radio" name="mark_discuss" value="YES" {% if activity.get('mark_discuss') == 'YES' %}checked{% endif %}> Yes
-                        </label>
-                        <label class="toggle-buttons__option{% if activity.get('mark_discuss') == 'NO' %} is-selected{% endif %}">
-                            <input type="radio" name="mark_discuss" value="NO" {% if activity.get('mark_discuss') == 'NO' %}checked{% endif %}> No
-                        </label>
-                    </div>
+                    {% set discuss_val = activity.get('mark_discuss') %}
+                    <button type="button" id="discuss-toggle"
+                            class="single-toggle single-toggle--{{ 'yes' if discuss_val == 'YES' else 'no' if discuss_val == 'NO' else 'unset' }}">
+                        {{ 'Yes' if discuss_val == 'YES' else 'No' if discuss_val == 'NO' else 'Not set - click to mark' }}
+                    </button>
+                    <input type="hidden" name="mark_discuss" id="discuss-hidden-input" value="{{ discuss_val or '' }}">
                 </div>
 
                 <div class="review-group">
-                    <span class="review-group__label">System error</span>
-                    <div class="toggle-buttons">
-                        <label class="toggle-buttons__option{% if activity.get('mark_ocr_wrong') == 'YES' %} is-selected{% endif %}">
-                            <input type="radio" name="mark_ocr_wrong" value="YES" {% if activity.get('mark_ocr_wrong') == 'YES' %}checked{% endif %}> Yes
+                    <span class="review-group__label">
+                        Type of Error
+                        {% if activity.get('error_type_marked_by') %}
+                        <span class="marked-by-badge marked-by-badge--{{ 'ai' if activity.get('error_type_marked_by') == 'AI' else 'team' }}">
+                            Marked by {{ 'AI' if activity.get('error_type_marked_by') == 'AI' else 'Verification Team' }}
+                        </span>
+                        {% endif %}
+                    </span>
+                    <div class="toggle-buttons toggle-buttons--wrap">
+                        {% for value, label in [('SYSTEM_ERROR', 'System Error'), ('PROCESS_ERROR', 'Process Error'), ('BOTH', 'Both'), ('ALL_OK', 'All OK')] %}
+                        <label class="toggle-buttons__option{% if activity.get('error_type') == value %} is-selected{% endif %}">
+                            <input type="radio" name="error_type" value="{{ value }}" {% if activity.get('error_type') == value %}checked{% endif %}> {{ label }}
                         </label>
-                        <label class="toggle-buttons__option{% if activity.get('mark_ocr_wrong') == 'NO' %} is-selected{% endif %}">
-                            <input type="radio" name="mark_ocr_wrong" value="NO" {% if activity.get('mark_ocr_wrong') == 'NO' %}checked{% endif %}> No
-                        </label>
-                    </div>
-                </div>
-
-                <div class="review-group">
-                    <span class="review-group__label">Process error</span>
-                    <div class="toggle-buttons">
-                        <label class="toggle-buttons__option{% if activity.get('mark_process_error') == 'YES' %} is-selected{% endif %}">
-                            <input type="radio" name="mark_process_error" value="YES" {% if activity.get('mark_process_error') == 'YES' %}checked{% endif %}> Yes
-                        </label>
-                        <label class="toggle-buttons__option{% if activity.get('mark_process_error') == 'NO' %} is-selected{% endif %}">
-                            <input type="radio" name="mark_process_error" value="NO" {% if activity.get('mark_process_error') == 'NO' %}checked{% endif %}> No
-                        </label>
+                        {% endfor %}
                     </div>
                 </div>
 
@@ -162,4 +154,5 @@
 </section>
 
 <script src="{{ url_for('static', filename='js/activity_detail.js') }}"></script>
+<script src="{{ url_for('static', filename='js/activity_detail_review.js') }}"></script>
 {% endblock %}

@@ -157,6 +157,13 @@
     gap: 8px;
 }
 
+/* The Type of Error group has 4 longer labels (System Error/Process Error/
+   Both/All OK) that won't fit one row in this narrow column - let them
+   wrap to a 2x2 grid instead of overflowing. */
+.toggle-buttons--wrap {
+    flex-wrap: wrap;
+}
+
 .toggle-buttons__option {
     border: 1px solid var(--panel-border);
     border-radius: 6px;
@@ -174,6 +181,60 @@
     border-color: var(--accent);
     background: rgba(18, 199, 133, 0.12);
     color: var(--accent);
+}
+
+/* --- Marked for Discussion: single toggle button (click flips Yes/No) --- */
+.single-toggle {
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    width: fit-content;
+}
+
+.single-toggle--yes {
+    border-color: var(--accent);
+    background: rgba(18, 199, 133, 0.12);
+    color: var(--accent);
+}
+
+.single-toggle--no {
+    border-color: #E84444;
+    background: rgba(232, 68, 68, 0.12);
+    color: #E84444;
+}
+
+.single-toggle--unset {
+    color: var(--text-muted);
+}
+
+/* --- "Marked by AI" / "Marked by Verification Team" badge next to the
+   Type of Error label --- */
+.marked-by-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    text-transform: none;
+    letter-spacing: 0;
+    vertical-align: middle;
+}
+
+.marked-by-badge--ai {
+    background: rgba(59, 130, 246, 0.18);
+    color: #3B82F6;
+}
+
+.marked-by-badge--team {
+    background: rgba(107, 114, 128, 0.22);
+    color: var(--text-muted);
 }
 
 .review-group--comment textarea {

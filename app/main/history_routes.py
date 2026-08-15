@@ -281,14 +281,28 @@ def activity_detail(activity_id):
         return "Something went wrong loading activity details.", 500
 
 
+VALID_ERROR_TYPES = {"SYSTEM_ERROR", "PROCESS_ERROR", "BOTH", "ALL_OK"}
+
+
 @main_bp.route("/history/activity/<activity_id>/review", methods=["POST"])
 def save_activity_review(activity_id):
     """
-    Save the 4 review fields for one activity: mark_discuss (YES/NO/untouched),
-    mark_ocr_wrong "System error" (YES/NO/untouched), mark_process_error
-    "Process error" (YES/NO/untouched), review_comment (free text).
-    result_reviewed = True if ANY of the 4 has been touched (including an explicit
-    "NO"), False only if all 4 are still untouched/empty.
+    Save the review fields for one activity: mark_discuss (YES/NO/untouched -
+    a single toggle button in the UI), error_type (SYSTEM_ERROR/PROCESS_ERROR/
+    BOTH/ALL_OK/untouched - one consolidated field, replacing the old separate
+    mark_ocr_wrong/mark_process_error which could disagree with each other -
+    e.g. both marked YES had no defined meaning), and review_comment.
+
+    error_type_marked_by is always set to "VERIFICATION_TEAM" here, since this
+    route is only ever reached via a human using this form. The (not yet
+    built) AI verification system will set error_type through a different
+    path later, with marked_by="AI". Every CHANGE to error_type is appended
+    to error_type_history (full audit trail) - re-saving the same value
+    doesn't spam a duplicate entry.
+
+    result_reviewed = True if ANY of mark_discuss / error_type / comment has
+    been touched (including an explicit "No" or a comment that's since been
+    cleared back to blank counts as untouched again).
     """
     db = current_app.extensions.get("mongo_db")
     if db is None:
@@ -299,23 +313,42 @@ def save_activity_review(activity_id):
     except InvalidId:
         return "Activity not found.", 404
 
-    mark_discuss = request.form.get("mark_discuss") or None            # "YES" / "NO" / None (untouched)
-    mark_ocr_wrong = request.form.get("mark_ocr_wrong") or None        # "YES" / "NO" / None (untouched)
-    mark_process_error = request.form.get("mark_process_error") or None  # "YES" / "NO" / None (untouched)
+    mark_discuss = request.form.get("mark_discuss") or None  # "YES" / "NO" / None (untouched)
+    error_type = request.form.get("error_type") or None
+    if error_type is not None and error_type not in VALID_ERROR_TYPES:
+        error_type = None  # ignore anything unexpected rather than store garbage
     review_comment = request.form.get("review_comment", "").strip()
 
-    result_reviewed = bool(mark_discuss or mark_ocr_wrong or mark_process_error or review_comment)
+    result_reviewed = bool(mark_discuss or error_type or review_comment)
 
     update_fields = {
         "mark_discuss": mark_discuss,
-        "mark_ocr_wrong": mark_ocr_wrong,
-        "mark_process_error": mark_process_error,
+        "error_type": error_type,
+        "error_type_marked_by": ("VERIFICATION_TEAM" if error_type else None),
         "review_comment": review_comment,
         "result_reviewed": result_reviewed,
     }
 
     try:
-        db["all_activities"].update_one({"_id": obj_id}, {"$set": update_fields})
+        existing = db["all_activities"].find_one({"_id": obj_id}, {"error_type": 1})
+        previous_error_type = existing.get("error_type") if existing else None
+
+        update_op = {"$set": update_fields}
+
+        # Only append a history entry when error_type actually CHANGED -
+        # re-submitting the same value (e.g. just editing the comment)
+        # shouldn't spam a duplicate audit entry.
+        if error_type is not None and error_type != previous_error_type:
+            update_op["$push"] = {
+                "error_type_history": {
+                    "value": error_type,
+                    "marked_by": "VERIFICATION_TEAM",
+                    "marked_at": datetime.now(timezone.utc).isoformat(),
+                    "source": "review",
+                }
+            }
+
+        db["all_activities"].update_one({"_id": obj_id}, update_op)
         flash("Review saved.", "success")
     except Exception as e:
         current_app.logger.error(f"Failed to save review for activity '{activity_id}': {e}")

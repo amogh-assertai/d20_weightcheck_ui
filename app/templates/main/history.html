@@ -70,11 +70,13 @@
         </div>
 
         <div class="filters__group">
-            <label for="ocr_wrong">System error</label>
-            <select name="ocr_wrong" id="ocr_wrong">
-                <option value="all" {% if selected_ocr_wrong == 'all' %}selected{% endif %}>All</option>
-                <option value="YES" {% if selected_ocr_wrong == 'YES' %}selected{% endif %}>Yes</option>
-                <option value="NO" {% if selected_ocr_wrong == 'NO' %}selected{% endif %}>No</option>
+            <label for="error_type">Type of Error</label>
+            <select name="error_type" id="error_type">
+                <option value="all" {% if selected_error_type == 'all' %}selected{% endif %}>All</option>
+                <option value="SYSTEM_ERROR" {% if selected_error_type == 'SYSTEM_ERROR' %}selected{% endif %}>System Error</option>
+                <option value="PROCESS_ERROR" {% if selected_error_type == 'PROCESS_ERROR' %}selected{% endif %}>Process Error</option>
+                <option value="BOTH" {% if selected_error_type == 'BOTH' %}selected{% endif %}>Both</option>
+                <option value="ALL_OK" {% if selected_error_type == 'ALL_OK' %}selected{% endif %}>All OK</option>
             </select>
         </div>
 
@@ -203,8 +205,7 @@
                 {% set matching = a.get('order_number_matching', '--') %}
                 {% set result = a.get('validation_result', 'MISSING') %}
                 {% set discuss_val = a.get('mark_discuss') %}
-                {% set error_val = a.get('mark_ocr_wrong') %}
-                {% set process_val = a.get('mark_process_error') %}
+                {% set error_type_val = a.get('error_type') %}
                 {% set has_comment = a.get('review_comment') %}
                 <tr>
                     <td>{{ a.get('timestamp_display', '-') }}</td>
@@ -227,12 +228,12 @@
                     <td class="flags-cell">
                         {% if discuss_val == 'YES' %}<span class="flag-badge flag-badge--discuss" title="Marked for discussion: Yes">D</span>
                         {% elif discuss_val == 'NO' %}<span class="flag-badge flag-badge--no" title="Marked for discussion: No">D</span>{% endif %}
-                        {% if error_val == 'YES' %}<span class="flag-badge flag-badge--error" title="System error: Yes">E</span>
-                        {% elif error_val == 'NO' %}<span class="flag-badge flag-badge--no" title="System error: No">E</span>{% endif %}
-                        {% if process_val == 'YES' %}<span class="flag-badge flag-badge--process" title="Process error: Yes">P</span>
-                        {% elif process_val == 'NO' %}<span class="flag-badge flag-badge--no" title="Process error: No">P</span>{% endif %}
+                        {% if error_type_val == 'SYSTEM_ERROR' %}<span class="flag-badge flag-badge--error" title="Type of Error: System Error">SE</span>
+                        {% elif error_type_val == 'PROCESS_ERROR' %}<span class="flag-badge flag-badge--process" title="Type of Error: Process Error">PE</span>
+                        {% elif error_type_val == 'BOTH' %}<span class="flag-badge flag-badge--error" title="Type of Error: Both">B</span>
+                        {% elif error_type_val == 'ALL_OK' %}<span class="flag-badge flag-badge--ok" title="Type of Error: All OK">OK</span>{% endif %}
                         {% if has_comment %}<span class="flag-badge flag-badge--comment" title="Has comment">C</span>{% endif %}
-                        {% if not (discuss_val or error_val or process_val or has_comment) %}<span class="flag-badge flag-badge--none">&mdash;</span>{% endif %}
+                        {% if not (discuss_val or error_type_val or has_comment) %}<span class="flag-badge flag-badge--none">&mdash;</span>{% endif %}
                     </td>
                     <td>
                         <a href="{{ url_for('main.activity_detail', activity_id=a.get('_id')) }}?{{ request.query_string.decode() }}" class="btn-view">View Details</a>

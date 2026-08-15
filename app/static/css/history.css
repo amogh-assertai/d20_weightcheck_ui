@@ -92,6 +92,11 @@
     color: var(--text-muted);
 }
 
+.flag-badge--ok {
+    background: rgba(18, 199, 133, 0.18);
+    color: #12C785;
+}
+
 .flag-badge--none {
     color: var(--text-muted);
     background: transparent;
