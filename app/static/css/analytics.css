@@ -68,6 +68,7 @@
 .stat-card__value--pass { color: #12C785; }
 .stat-card__value--fail { color: #E84444; }
 .stat-card__value--warn { color: #F0A52D; }
+.stat-card__value--muted { color: var(--text-muted); }
 
 .stat-card__sub {
     font-size: 12px;
@@ -101,6 +102,7 @@
 .legend-dot--pass { background: #12C785; }
 .legend-dot--fail { background: #E84444; }
 .legend-dot--warn { background: #F0A52D; }
+.legend-dot--muted { background: var(--text-muted); }
 
 .camera-stat-grid {
     display: grid;
@@ -163,6 +165,7 @@
 .breakdown-item--pass { color: #12C785; }
 .breakdown-item--fail { color: #E84444; }
 .breakdown-item--warn { color: #F0A52D; }
+.breakdown-item--muted { color: var(--text-muted); }
 
 /* --- Accuracy Analytics: flowchart (total -> pass/non-pass -> reviewed/
    unreviewed -> system-error/correct -> total correct -> formula) --- */

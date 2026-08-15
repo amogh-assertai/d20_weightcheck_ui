@@ -12,6 +12,24 @@ from flask import current_app, redirect, render_template, request, url_for
 from app.main import main_bp
 from app.main.shared import base_context, parse_activity_date, parse_numeric
 
+# Known result types get this display order first (matches the existing
+# PASS/FAIL/MISSING_DATA convention); anything else found in the data is
+# appended afterwards, most-frequent first - so a brand new result type
+# (e.g. NOT_IMPLEMENTED) just works, with no code change required.
+KNOWN_RESULT_ORDER = ["PASS", "FAIL", "MISSING_DATA"]
+
+
+def _build_result_type_order(result_counts):
+    """Canonical display order used for stat cards, legend, and every
+    per-camera breakdown - same order everywhere on the page."""
+    known = [r for r in KNOWN_RESULT_ORDER if r in result_counts]
+    other = sorted(
+        (r for r in result_counts if r not in KNOWN_RESULT_ORDER),
+        key=lambda r: result_counts[r],
+        reverse=True,
+    )
+    return known + other
+
 
 @main_bp.route("/analytics")
 def analytics():
@@ -22,16 +40,29 @@ def analytics():
 @main_bp.route("/analytics/system")
 def analytics_system():
     """
-    System Analytics: activity volume, camera-wise distribution, PASS/FAIL/
-    MISSING_DATA breakdown, and top-10 highest weight differences - all
-    scoped to a date range (defaults to today only).
+    System Analytics: activity volume, camera-wise distribution, and top-5
+    highest weight differences - all scoped to a date range (defaults to
+    today only).
+
+    Result-type breakdown (stat cards, legend, per-camera bars/lines) is
+    fully dynamic: every distinct validation_result value actually present
+    in the data gets its own tracked count, at every level (global total,
+    per-camera). This is deliberate - an earlier version only tracked
+    PASS/FAIL/MISSING_DATA by name and lumped everything else into an
+    "other" bucket that was drawn on the graph but never added into any
+    displayed number, so totals didn't add up once a new result type
+    appeared. Missing/null validation_result is treated as its own
+    "UNKNOWN" bucket for the same reason - it must be counted somewhere,
+    not silently dropped.
     """
     db = current_app.extensions.get("mongo_db")
     error = None
     total_count = 0
-    pass_count = fail_count = missing_count = 0
     camera_distribution = []
     top_weight_diff = []
+    result_types = []
+    result_counts = {}
+    result_pcts = {}
 
     today = datetime.now(timezone.utc).date()
     start_date_str = request.args.get("start_date", today.isoformat())
@@ -63,30 +94,23 @@ def analytics_system():
 
             total_count = len(filtered)
 
-            # Per-camera breakdown: total + PASS/FAIL/MISSING_DATA/other counts,
-            # so each camera's result composition is visible, not just its volume.
+            # Per-camera breakdown: total + a count per distinct result type
+            # actually seen for that camera - not a fixed set of buckets.
             camera_stats = {}
             for doc in filtered:
                 cam = doc.get("camera_name", "Unknown")
-                stats = camera_stats.setdefault(
-                    cam, {"total": 0, "pass": 0, "fail": 0, "missing": 0, "other": 0}
-                )
-                stats["total"] += 1
+                result = doc.get("validation_result") or "UNKNOWN"
 
-                result = doc.get("validation_result")
-                if result == "PASS":
-                    stats["pass"] += 1
-                    pass_count += 1
-                elif result == "FAIL":
-                    stats["fail"] += 1
-                    fail_count += 1
-                elif result == "MISSING_DATA":
-                    stats["missing"] += 1
-                    missing_count += 1
-                else:
-                    stats["other"] += 1
+                result_counts[result] = result_counts.get(result, 0) + 1
 
-            camera_distribution = sorted(camera_stats.items(), key=lambda kv: kv[1]["total"], reverse=True)
+                cstats = camera_stats.setdefault(cam, {"total": 0, "results": {}})
+                cstats["total"] += 1
+                cstats["results"][result] = cstats["results"].get(result, 0) + 1
+
+            camera_distribution = sorted(
+                camera_stats.items(), key=lambda kv: kv[1]["total"], reverse=True
+            )
+            result_types = _build_result_type_order(result_counts)
 
             # Top 5 highest ABSOLUTE weight difference - only among docs where
             # weight_difference actually parses as a number (can't meaningfully
@@ -113,8 +137,10 @@ def analytics_system():
             current_app.logger.error(f"Error computing system analytics: {e}")
             error = "Could not load analytics."
 
-    def pct_of(n):
-        return round((n / total_count * 100), 1) if total_count else 0.0
+    result_pcts = {
+        r: (round(result_counts[r] / total_count * 100, 1) if total_count else 0.0)
+        for r in result_types
+    }
 
     context = base_context()
     context.update({
@@ -122,12 +148,9 @@ def analytics_system():
         "start_date": start_date_str,
         "end_date": end_date_str,
         "total_count": total_count,
-        "pass_count": pass_count,
-        "fail_count": fail_count,
-        "missing_count": missing_count,
-        "pass_pct": pct_of(pass_count),
-        "fail_pct": pct_of(fail_count),
-        "missing_pct": pct_of(missing_count),
+        "result_types": result_types,
+        "result_counts": result_counts,
+        "result_pcts": result_pcts,
         "camera_distribution": camera_distribution,
         "top_weight_diff": top_weight_diff,
     })
@@ -158,6 +181,14 @@ def analytics_accuracy():
       = Yes, or both marked No -> correct.
     - If both are marked Yes on the same activity, System Error takes
       priority (counted as incorrect).
+
+    Note: this page intentionally still treats anything outside PASS/FAIL/
+    MISSING_DATA as "not part of the accuracy calculation" (skipped, not
+    counted anywhere) - unlike System Analytics, which now tracks every
+    result type. A new result type showing up here needs its own accuracy
+    rule defined explicitly (is it correct-by-default like PASS, or does it
+    need review like FAIL/MISSING_DATA?) - that's a business decision, not
+    something safe to infer automatically the way a display count is.
     """
     db = current_app.extensions.get("mongo_db")
     error = None

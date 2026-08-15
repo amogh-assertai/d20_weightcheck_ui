@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import badge_class %}
 
 {% block title %}{{ client_name }} · System Analytics{% endblock %}
 
@@ -45,26 +46,25 @@
 </section>
 {% else %}
 
+{#
+  Stat cards: one per distinct result type actually found in the data
+  (result_types), not a fixed PASS/FAIL/MISSING_DATA list - so a new result
+  type automatically gets its own card, counted correctly, with no code
+  change. Colour comes from badge_class(), same mapping used everywhere
+  else in the app (unknown types -> muted/grey, automatically).
+#}
 <section class="stat-grid">
     <div class="stat-card">
         <span class="stat-card__label">Total Activities</span>
         <span class="stat-card__value">{{ total_count }}</span>
     </div>
+    {% for r in result_types %}
     <div class="stat-card">
-        <span class="stat-card__label">PASS</span>
-        <span class="stat-card__value stat-card__value--pass">{{ pass_count }}</span>
-        <span class="stat-card__sub">{{ pass_pct }}%</span>
+        <span class="stat-card__label">{{ r }}</span>
+        <span class="stat-card__value stat-card__value--{{ badge_class(r) }}">{{ result_counts[r] }}</span>
+        <span class="stat-card__sub">{{ result_pcts[r] }}%</span>
     </div>
-    <div class="stat-card">
-        <span class="stat-card__label">FAIL</span>
-        <span class="stat-card__value stat-card__value--fail">{{ fail_count }}</span>
-        <span class="stat-card__sub">{{ fail_pct }}%</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-card__label">MISSING_DATA</span>
-        <span class="stat-card__value stat-card__value--warn">{{ missing_count }}</span>
-        <span class="stat-card__sub">{{ missing_pct }}%</span>
-    </div>
+    {% endfor %}
 </section>
 
 <section class="panel">
@@ -74,33 +74,41 @@
     </div>
 
     <div class="camera-legend">
-        <span class="legend-item"><span class="legend-dot legend-dot--pass"></span>PASS</span>
-        <span class="legend-item"><span class="legend-dot legend-dot--fail"></span>FAIL</span>
-        <span class="legend-item"><span class="legend-dot legend-dot--warn"></span>MISSING_DATA</span>
+        {% for r in result_types %}
+        <span class="legend-item"><span class="legend-dot legend-dot--{{ badge_class(r) }}"></span>{{ r }}</span>
+        {% endfor %}
     </div>
 
     <div class="camera-stat-grid">
         {% for cam, stats in camera_distribution %}
-        {% set pass_pct_cam = (stats.pass / stats.total * 100) if stats.total else 0 %}
-        {% set fail_pct_cam = (stats.fail / stats.total * 100) if stats.total else 0 %}
-        {% set missing_pct_cam = (stats.missing / stats.total * 100) if stats.total else 0 %}
         <div class="camera-stat-card">
             <div class="camera-stat-card__header">
                 <span class="camera-stat-card__name">{{ cam }}</span>
                 <span class="camera-stat-card__total">{{ stats.total }} total</span>
             </div>
 
+            {#
+              Same result_types order drives both the bar segments and the
+              text breakdown below, for every camera - so whatever appears
+              in the graph always has a matching number right under it.
+            #}
             <div class="stacked-bar">
-                {% if stats.pass %}<div class="stacked-bar__seg stacked-bar__seg--pass" style="width: {{ pass_pct_cam }}%;" title="PASS: {{ stats.pass }}"></div>{% endif %}
-                {% if stats.fail %}<div class="stacked-bar__seg stacked-bar__seg--fail" style="width: {{ fail_pct_cam }}%;" title="FAIL: {{ stats.fail }}"></div>{% endif %}
-                {% if stats.missing %}<div class="stacked-bar__seg stacked-bar__seg--warn" style="width: {{ missing_pct_cam }}%;" title="MISSING_DATA: {{ stats.missing }}"></div>{% endif %}
-                {% if stats.other %}<div class="stacked-bar__seg stacked-bar__seg--muted" style="width: {{ (stats.other / stats.total * 100) if stats.total else 0 }}%;" title="Other: {{ stats.other }}"></div>{% endif %}
+                {% for r in result_types %}
+                {% set count = stats.results.get(r, 0) %}
+                {% if count %}
+                <div class="stacked-bar__seg stacked-bar__seg--{{ badge_class(r) }}"
+                     style="width: {{ (count / stats.total * 100) if stats.total else 0 }}%;"
+                     title="{{ r }}: {{ count }}"></div>
+                {% endif %}
+                {% endfor %}
             </div>
 
             <div class="camera-stat-card__breakdown">
-                <span class="breakdown-item breakdown-item--pass">{{ stats.pass }} PASS &middot; {{ '%.1f'|format(pass_pct_cam) }}%</span>
-                <span class="breakdown-item breakdown-item--fail">{{ stats.fail }} FAIL &middot; {{ '%.1f'|format(fail_pct_cam) }}%</span>
-                <span class="breakdown-item breakdown-item--warn">{{ stats.missing }} MISSING_DATA &middot; {{ '%.1f'|format(missing_pct_cam) }}%</span>
+                {% for r in result_types %}
+                {% set count = stats.results.get(r, 0) %}
+                {% set pct = (count / stats.total * 100) if stats.total else 0 %}
+                <span class="breakdown-item breakdown-item--{{ badge_class(r) }}">{{ count }} {{ r }} &middot; {{ '%.1f'|format(pct) }}%</span>
+                {% endfor %}
             </div>
         </div>
         {% endfor %}
