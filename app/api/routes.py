@@ -21,6 +21,7 @@ from werkzeug.utils import secure_filename
 from pymongo.errors import PyMongoError
 from app.live_status import check_is_duplicate, persist_result, VALID_TABLE_IDS, REQUIRED_FIELDS
 from app.sockets import broadcast_table_update
+from app.main.shared import parse_activity_date
 
 api_bp = Blueprint("api", __name__)
 
@@ -188,3 +189,125 @@ def receive_activity_result():
         f"Recorded NEW latest data for {table_id}: {result} (activity #{activity_number})"
     )
     return jsonify({"status": "recorded", "table_id": table_id, "result": result}), 200
+
+
+VALID_ERROR_TYPES = {"SYSTEM_ERROR", "PROCESS_ERROR", "BOTH", "ALL_OK"}
+
+
+@api_bp.route("/activities", methods=["GET"])
+def list_activities():
+    """
+    Read/export endpoint for external systems - one flexible query, every
+    filter below is optional and combinable:
+
+      start_date, end_date   - YYYY-MM-DD (both default to today if neither given)
+      camera_id               - exact match
+      result                   - validation_result exact match (PASS/FAIL/
+                                 MISSING_DATA/etc.) - deliberately NOT
+                                 restricted to a fixed list, so a new result
+                                 type is queryable immediately, same
+                                 philosophy as the History page's filter
+      error_type               - SYSTEM_ERROR / PROCESS_ERROR / BOTH / ALL_OK
+      order_number             - matches either expected_order_number or
+                                 actual_order_number
+      has_comment              - "present" or "absent"
+
+    No pagination (by explicit choice) - returns every matching record in
+    one response: {"count": N, "activities": [...]}. Documents are returned
+    as-is (including image_path and raw timestamps) - this is a machine-
+    consumed endpoint, so no human-readability formatting is applied here
+    (unlike the History page's Excel export, which does format dates for
+    a person reading a spreadsheet).
+    """
+    db = current_app.extensions.get("mongo_db")
+    if db is None:
+        return jsonify({"error": "Storage backend unavailable"}), 503
+
+    today = datetime.now(timezone.utc).date()
+
+    def _parse_date_param(value, param_name, default):
+        if not value:
+            return default, None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date(), None
+        except ValueError:
+            return None, f"'{param_name}' must be in YYYY-MM-DD format"
+
+    start_date, err = _parse_date_param(request.args.get("start_date"), "start_date", today)
+    if err:
+        return jsonify({"error": err}), 400
+    end_date, err = _parse_date_param(request.args.get("end_date"), "end_date", today)
+    if err:
+        return jsonify({"error": err}), 400
+    if start_date > end_date:
+        return jsonify({"error": "'start_date' must not be after 'end_date'"}), 400
+
+    camera_id_param = request.args.get("camera_id")
+    result_param = request.args.get("result")
+    error_type_param = request.args.get("error_type")
+    order_number_param = request.args.get("order_number")
+    has_comment_param = request.args.get("has_comment")
+
+    if error_type_param is not None and error_type_param not in VALID_ERROR_TYPES:
+        return jsonify({"error": f"'error_type' must be one of {sorted(VALID_ERROR_TYPES)}"}), 400
+    if has_comment_param is not None and has_comment_param not in ("present", "absent"):
+        return jsonify({"error": "'has_comment' must be 'present' or 'absent'"}), 400
+
+    # Built as a list of independent conditions, combined with $and only if
+    # there's more than one - avoids two top-level $or keys silently
+    # clobbering each other in a single dict (e.g. order_number + has_comment
+    # both need their own $or).
+    conditions = []
+
+    if camera_id_param is not None:
+        try:
+            camera_id_value = int(camera_id_param)
+        except ValueError:
+            camera_id_value = camera_id_param  # fall back to string match rather than error
+        conditions.append({"camera_id": camera_id_value})
+
+    if result_param is not None:
+        conditions.append({"validation_result": result_param})
+
+    if error_type_param is not None:
+        conditions.append({"error_type": error_type_param})
+
+    if order_number_param is not None:
+        conditions.append({"$or": [
+            {"expected_order_number": order_number_param},
+            {"actual_order_number": order_number_param},
+        ]})
+
+    if has_comment_param == "present":
+        conditions.append({"review_comment": {"$exists": True, "$nin": ["", None]}})
+    elif has_comment_param == "absent":
+        conditions.append({"$or": [
+            {"review_comment": {"$exists": False}},
+            {"review_comment": None},
+            {"review_comment": ""},
+        ]})
+
+    if len(conditions) > 1:
+        mongo_query = {"$and": conditions}
+    elif conditions:
+        mongo_query = conditions[0]
+    else:
+        mongo_query = {}
+
+    try:
+        docs = list(db["all_activities"].find(mongo_query))
+    except PyMongoError as e:
+        current_app.logger.error(f"MongoDB query failed for GET /api/activities: {e}")
+        return jsonify({"error": "Failed to query activities"}), 503
+
+    # Date-range filtering happens in Python, same as every other page in
+    # this app - timestamp is stored as a string, not a native Mongo date.
+    activities = []
+    for doc in docs:
+        doc_date = parse_activity_date(doc.get("timestamp"))
+        if doc_date is not None and not (start_date <= doc_date <= end_date):
+            continue
+        doc["_id"] = str(doc["_id"])
+        activities.append(doc)
+
+    return jsonify({"count": len(activities), "activities": activities}), 200
