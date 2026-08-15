@@ -92,10 +92,17 @@ def query_activities(db):
         end_date_str = end_date.isoformat()
 
     camera_options = []
+    result_options = []
     filtered = []
 
     if db is not None:
         camera_options = sorted(db["all_activities"].distinct("camera_name"))
+        # Same pattern as camera_options: whatever result values actually
+        # exist in the data become selectable filter options - a new result
+        # type (e.g. NOT_IMPLEMENTED) is filterable immediately, with no
+        # code change. Falsy/missing values are dropped (an empty option in
+        # a dropdown isn't a meaningful filter choice).
+        result_options = sorted(v for v in db["all_activities"].distinct("validation_result") if v)
 
         # Mongo-side filter: fields that are simple exact matches
         mongo_query = {}
@@ -147,5 +154,6 @@ def query_activities(db):
         "selected_order": sort_order,
         "start_date": start_date_str,
         "end_date": end_date_str,
+        "result_options": result_options,
     }
     return filtered, camera_options, meta

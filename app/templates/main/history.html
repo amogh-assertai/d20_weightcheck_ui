@@ -49,9 +49,9 @@
             <label for="result">Result</label>
             <select name="result" id="result">
                 <option value="all" {% if selected_result == 'all' %}selected{% endif %}>All results</option>
-                <option value="PASS" {% if selected_result == 'PASS' %}selected{% endif %}>PASS</option>
-                <option value="FAIL" {% if selected_result == 'FAIL' %}selected{% endif %}>FAIL</option>
-                <option value="MISSING_DATA" {% if selected_result == 'MISSING_DATA' %}selected{% endif %}>MISSING_DATA</option>
+                {% for r in result_options %}
+                <option value="{{ r }}" {% if selected_result == r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
             </select>
         </div>
 
