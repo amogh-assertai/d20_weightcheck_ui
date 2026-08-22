@@ -16,6 +16,8 @@ Two endpoints for the AI device:
 import os
 import json
 from datetime import datetime, timezone
+from bson import ObjectId
+from bson.errors import InvalidId
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 from pymongo.errors import PyMongoError
@@ -311,3 +313,109 @@ def list_activities():
         activities.append(doc)
 
     return jsonify({"count": len(activities), "activities": activities}), 200
+
+
+@api_bp.route("/activities/<activity_id>", methods=["PATCH"])
+def update_activity(activity_id):
+    """
+    Update a single activity by its _id - built for the VLM verification
+    system to write back its findings.
+
+    JSON body (all fields optional, but at least one is required):
+      {
+        "error_type": "ALL_OK",       # or "PROCESS_ERROR", "SYSTEM_ERROR", "BOTH"
+        "no_of_pages": 3,
+        "no_of_items": 12
+      }
+
+    error_type_marked_by is ALWAYS set to "AI" here - it's implicit in
+    calling this endpoint, not something the caller supplies, so there's no
+    way to call this and have it show as a human review by mistake. The
+    human-facing review form (History/Activity Details) is a completely
+    separate code path that always writes "VERIFICATION_TEAM" instead - the
+    two can never collide or impersonate each other.
+
+    Every CHANGE to error_type is appended to error_type_history (source:
+    "ai") - re-sending the same value doesn't create a duplicate entry,
+    same rule as the human review path.
+
+    result_reviewed is recomputed after applying whatever this call
+    changed, using the same formula as everywhere else in the app:
+    mark_discuss OR error_type OR review_comment.
+
+    Currently the VLM is only expected to send ALL_OK or PROCESS_ERROR
+    (per how it's being used), but SYSTEM_ERROR and BOTH are also accepted
+    here - this endpoint doesn't assume anything about which subset of the
+    4 values any given caller will actually use.
+    """
+    db = current_app.extensions.get("mongo_db")
+    if db is None:
+        return jsonify({"error": "Storage backend unavailable"}), 503
+
+    try:
+        obj_id = ObjectId(activity_id)
+    except InvalidId:
+        return jsonify({"error": "Activity not found"}), 404
+
+    payload = request.get_json(silent=True)
+    if payload is None or not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
+    existing = db["all_activities"].find_one({"_id": obj_id})
+    if existing is None:
+        return jsonify({"error": "Activity not found"}), 404
+
+    update_fields = {}
+    updated_field_names = []
+
+    if "error_type" in payload:
+        new_error_type = payload["error_type"]
+        if new_error_type not in VALID_ERROR_TYPES:
+            return jsonify({"error": f"'error_type' must be one of {sorted(VALID_ERROR_TYPES)}"}), 400
+        update_fields["error_type"] = new_error_type
+        update_fields["error_type_marked_by"] = "AI"
+        updated_field_names.append("error_type")
+
+    for count_field in ("no_of_pages", "no_of_items"):
+        if count_field in payload:
+            value = payload[count_field]
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                return jsonify({"error": f"'{count_field}' must be a non-negative integer"}), 400
+            update_fields[count_field] = value
+            updated_field_names.append(count_field)
+
+    if not update_fields:
+        return jsonify({
+            "error": "No recognized fields to update - expected at least one of: "
+                     "error_type, no_of_pages, no_of_items"
+        }), 400
+
+    # result_reviewed uses the same formula as the human review path
+    # (app/main/history_routes.py::save_activity_review) - recomputed here
+    # using whatever error_type this call ends up with (new or existing).
+    effective_error_type = update_fields.get("error_type", existing.get("error_type"))
+    mark_discuss = existing.get("mark_discuss")
+    review_comment = (existing.get("review_comment") or "").strip()
+    update_fields["result_reviewed"] = bool(mark_discuss or effective_error_type or review_comment)
+
+    update_op = {"$set": update_fields}
+
+    previous_error_type = existing.get("error_type")
+    if "error_type" in update_fields and update_fields["error_type"] != previous_error_type:
+        update_op["$push"] = {
+            "error_type_history": {
+                "value": update_fields["error_type"],
+                "marked_by": "AI",
+                "marked_at": datetime.now(timezone.utc).isoformat(),
+                "source": "ai",
+            }
+        }
+
+    try:
+        db["all_activities"].update_one({"_id": obj_id}, update_op)
+    except PyMongoError as e:
+        current_app.logger.error(f"MongoDB update failed for activity '{activity_id}': {e}")
+        return jsonify({"error": "Failed to update activity"}), 503
+
+    current_app.logger.info(f"AI-updated activity {activity_id}: {', '.join(updated_field_names)}")
+    return jsonify({"status": "updated", "id": activity_id, "updated_fields": updated_field_names}), 200

@@ -104,24 +104,54 @@ def query_activities(db):
         # a dropdown isn't a meaningful filter choice).
         result_options = sorted(v for v in db["all_activities"].distinct("validation_result") if v)
 
-        # Mongo-side filter: fields that are simple exact matches
-        mongo_query = {}
+        # Mongo-side filter: built as a list of independent conditions,
+        # combined with $and only if there's more than one. A flat dict
+        # would break if two conditions both need their own $or clause
+        # (e.g. NOT_YET_REVIEWED and has_comment=absent both do) - the
+        # second assignment would silently overwrite the first.
+        conditions = []
         if table_filter != "all":
-            mongo_query["camera_name"] = table_filter
+            conditions.append({"camera_name": table_filter})
         if result_filter != "all":
-            mongo_query["validation_result"] = result_filter
-        if error_type_filter != "all":
-            mongo_query["error_type"] = error_type_filter
+            conditions.append({"validation_result": result_filter})
+
+        if error_type_filter == "NOT_YET_REVIEWED":
+            # Not a real stored value - "not yet reviewed" means BOTH: no
+            # error_type classification (none of SYSTEM_ERROR/PROCESS_ERROR/
+            # BOTH/ALL_OK) AND no comment either. An activity with a
+            # comment but no error_type yet is partially reviewed, not
+            # untouched - it must not match this filter.
+            conditions.append({"$and": [
+                {"$or": [
+                    {"error_type": {"$exists": False}},
+                    {"error_type": None},
+                ]},
+                {"$or": [
+                    {"review_comment": {"$exists": False}},
+                    {"review_comment": None},
+                    {"review_comment": ""},
+                ]},
+            ]})
+        elif error_type_filter != "all":
+            conditions.append({"error_type": error_type_filter})
+
         if discuss_filter in ("YES", "NO"):
-            mongo_query["mark_discuss"] = discuss_filter
+            conditions.append({"mark_discuss": discuss_filter})
         if has_comment_filter == "present":
-            mongo_query["review_comment"] = {"$exists": True, "$nin": ["", None]}
+            conditions.append({"review_comment": {"$exists": True, "$nin": ["", None]}})
         elif has_comment_filter == "absent":
-            mongo_query["$or"] = [
+            conditions.append({"$or": [
                 {"review_comment": {"$exists": False}},
                 {"review_comment": ""},
                 {"review_comment": None},
-            ]
+            ]})
+
+        if len(conditions) > 1:
+            mongo_query = {"$and": conditions}
+        elif conditions:
+            mongo_query = conditions[0]
+        else:
+            mongo_query = {}
 
         all_matching = list(db["all_activities"].find(mongo_query))
 

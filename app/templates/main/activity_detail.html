@@ -34,43 +34,63 @@
 </section>
 
 <section class="detail-body">
-    <div class="detail-side detail-side--left">
-        <div class="field-row">
-            <span class="field-row__label">Expected Order #</span>
-            <span class="field-row__value">{{ activity.get('expected_order_number', '-') }}</span>
+    <div class="detail-left-column">
+        <div class="detail-side detail-side--left">
+            <div class="field-row">
+                <span class="field-row__label">Expected Order #</span>
+                <span class="field-row__value">{{ activity.get('expected_order_number', '-') }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-row__label">Actual Order #</span>
+                <span class="field-row__value">{{ activity.get('actual_order_number', '-') }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-row__label">Order Matched</span>
+                <span class="badge badge--{{ yes_no_class(activity.get('order_number_matching')) }}">
+                    {{ activity.get('order_number_matching', '--') }}
+                </span>
+            </div>
+            <div class="field-row">
+                <span class="field-row__label">Expected Weight</span>
+                <span class="field-row__value">{{ activity.get('expected_weight', '-') }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-row__label">Actual Weight</span>
+                <span class="field-row__value">{{ activity.get('actual_weight', '-') }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-row__label">Weight Difference</span>
+                <span class="field-row__value">{{ activity.get('weight_difference', '-') }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-row__label">Weight Difference %</span>
+                <span class="field-row__value">{{ activity.get('weight_difference_percent', '-') }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-row__label">Weight Result</span>
+                <span class="badge badge--{{ pass_fail_class(activity.get('weight_result')) }}">
+                    {{ activity.get('weight_result', '-') }}
+                </span>
+            </div>
         </div>
-        <div class="field-row">
-            <span class="field-row__label">Actual Order #</span>
-            <span class="field-row__value">{{ activity.get('actual_order_number', '-') }}</span>
+
+        {% if activity.get('no_of_pages') is not none or activity.get('no_of_items') is not none %}
+        <div class="detail-side detail-side--left">
+            <div class="detail-side__heading">Additional Information</div>
+            {% if activity.get('no_of_pages') is not none %}
+            <div class="field-row">
+                <span class="field-row__label">No. of Pages</span>
+                <span class="field-row__value">{{ activity.get('no_of_pages') }}</span>
+            </div>
+            {% endif %}
+            {% if activity.get('no_of_items') is not none %}
+            <div class="field-row">
+                <span class="field-row__label">No. of Items</span>
+                <span class="field-row__value">{{ activity.get('no_of_items') }}</span>
+            </div>
+            {% endif %}
         </div>
-        <div class="field-row">
-            <span class="field-row__label">Order Matched</span>
-            <span class="badge badge--{{ yes_no_class(activity.get('order_number_matching')) }}">
-                {{ activity.get('order_number_matching', '--') }}
-            </span>
-        </div>
-        <div class="field-row">
-            <span class="field-row__label">Expected Weight</span>
-            <span class="field-row__value">{{ activity.get('expected_weight', '-') }}</span>
-        </div>
-        <div class="field-row">
-            <span class="field-row__label">Actual Weight</span>
-            <span class="field-row__value">{{ activity.get('actual_weight', '-') }}</span>
-        </div>
-        <div class="field-row">
-            <span class="field-row__label">Weight Difference</span>
-            <span class="field-row__value">{{ activity.get('weight_difference', '-') }}</span>
-        </div>
-        <div class="field-row">
-            <span class="field-row__label">Weight Difference %</span>
-            <span class="field-row__value">{{ activity.get('weight_difference_percent', '-') }}</span>
-        </div>
-        <div class="field-row">
-            <span class="field-row__label">Weight Result</span>
-            <span class="badge badge--{{ pass_fail_class(activity.get('weight_result')) }}">
-                {{ activity.get('weight_result', '-') }}
-            </span>
-        </div>
+        {% endif %}
     </div>
 
     <div class="detail-image">

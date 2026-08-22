@@ -112,6 +112,25 @@
     word-break: break-word;
 }
 
+/* The left column stacks the order/weight panel + (optional) Additional
+   Information panel vertically - mirrors .detail-right-column below. */
+.detail-left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+}
+
+.detail-side__heading {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
 /* The right column stacks the info panel + review form vertically */
 .detail-right-column {
     display: flex;
@@ -263,8 +282,8 @@
 @media (max-width: 640px) {
     /* Image first - the thing you actually want to glance at */
     .detail-image { order: -3; }
-    /* Then the left panel (order/weight numbers) */
-    .detail-side--left { order: -2; }
+    /* Then the left column (order/weight panel + Additional Information, if present) */
+    .detail-left-column { order: -2; }
     /* Then the right column (activity/reasoning fields + review form) */
     .detail-right-column { order: -1; }
 
