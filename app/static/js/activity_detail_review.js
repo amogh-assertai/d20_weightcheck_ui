@@ -37,3 +37,35 @@
 
     render(hiddenInput.value);
 })();
+
+/* ---------------------------------------------------
+   Save for Active Learning: an instant-effect toggle, not tied to the
+   review form's Save button - clicking it IS the save. Calls the server
+   immediately via fetch() and recolors itself from the actual response,
+   rather than assuming success and flipping color optimistically.
+--------------------------------------------------- */
+(function () {
+    var btn = document.getElementById('active-learning-toggle');
+    if (!btn) return;
+
+    function render(isOn) {
+        btn.textContent = isOn ? 'Saved for Active Learning' : 'Save for Active Learning';
+        btn.classList.toggle('active-learning-toggle--on', isOn);
+    }
+
+    btn.addEventListener('click', function () {
+        var url = btn.getAttribute('data-toggle-url');
+        btn.disabled = true;
+        fetch(url, { method: 'POST' })
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                render(!!data.saved_for_active_learning);
+            })
+            .catch(function () {
+                console.warn('Could not update the active learning flag - please try again.');
+            })
+            .finally(function () {
+                btn.disabled = false;
+            });
+    });
+})();

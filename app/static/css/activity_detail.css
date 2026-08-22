@@ -268,6 +268,56 @@
     width: 100%;
 }
 
+/* --- Additional Information: editable no_of_pages / no_of_items --- */
+.additional-info-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.field-row--editable input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.additional-info-form__save {
+    align-self: flex-start;
+    margin-top: 2px;
+}
+
+/* --- Save for Active Learning: instant-toggle button below the image ---
+   Default (off) = black. Once saved (on) = red. Purely a visual state
+   flip driven by the server's actual response, not an optimistic guess. */
+.active-learning-toggle {
+    display: block;
+    margin: 12px auto 0;
+    padding: 10px 22px;
+    border-radius: 6px;
+    border: 1px solid #000;
+    background: #000;
+    color: #fff;
+    font-size: 13px;
+    font-family: var(--font-display);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.active-learning-toggle:hover {
+    opacity: 0.85;
+}
+
+.active-learning-toggle--on {
+    background: #E84444;
+    border-color: #E84444;
+}
+
 /* Stack the 3-column detail layout on narrower/tablet screens */
 @media (max-width: 900px) {
     .detail-body {

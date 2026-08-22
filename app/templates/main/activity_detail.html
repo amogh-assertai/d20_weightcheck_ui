@@ -74,23 +74,28 @@
             </div>
         </div>
 
-        {% if activity.get('no_of_pages') is not none or activity.get('no_of_items') is not none %}
+        {# Always shown now (not conditional) - lets a human add these
+           manually when the VLM hasn't run yet, or correct them if it got
+           something wrong. Blank fields save as None, not 0. #}
         <div class="detail-side detail-side--left">
             <div class="detail-side__heading">Additional Information</div>
-            {% if activity.get('no_of_pages') is not none %}
-            <div class="field-row">
-                <span class="field-row__label">No. of Pages</span>
-                <span class="field-row__value">{{ activity.get('no_of_pages') }}</span>
-            </div>
-            {% endif %}
-            {% if activity.get('no_of_items') is not none %}
-            <div class="field-row">
-                <span class="field-row__label">No. of Items</span>
-                <span class="field-row__value">{{ activity.get('no_of_items') }}</span>
-            </div>
-            {% endif %}
+            <form method="post" action="{{ url_for('main.save_additional_info', activity_id=activity.get('_id')) }}" class="additional-info-form">
+                <input type="hidden" name="query_string" value="{{ query_string }}">
+                <div class="field-row field-row--editable">
+                    <label class="field-row__label" for="no_of_pages">No. of Pages</label>
+                    <input type="number" min="0" step="1" name="no_of_pages" id="no_of_pages"
+                           value="{{ activity.get('no_of_pages') if activity.get('no_of_pages') is not none else '' }}"
+                           placeholder="Not set">
+                </div>
+                <div class="field-row field-row--editable">
+                    <label class="field-row__label" for="no_of_items">No. of Items</label>
+                    <input type="number" min="0" step="1" name="no_of_items" id="no_of_items"
+                           value="{{ activity.get('no_of_items') if activity.get('no_of_items') is not none else '' }}"
+                           placeholder="Not set">
+                </div>
+                <button type="submit" class="filters__apply additional-info-form__save">Save</button>
+            </form>
         </div>
-        {% endif %}
     </div>
 
     <div class="detail-image">
@@ -102,6 +107,12 @@
         {% else %}
             <p class="page-placeholder__text">No image available.</p>
         {% endif %}
+
+        <button type="button" id="active-learning-toggle"
+                class="active-learning-toggle{% if activity.get('saved_for_active_learning') %} active-learning-toggle--on{% endif %}"
+                data-toggle-url="{{ url_for('main.toggle_active_learning', activity_id=activity.get('_id')) }}">
+            {{ 'Saved for Active Learning' if activity.get('saved_for_active_learning') else 'Save for Active Learning' }}
+        </button>
     </div>
 
     <div class="detail-right-column">

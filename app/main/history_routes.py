@@ -12,7 +12,7 @@ from io import BytesIO
 from bson import ObjectId
 from bson.errors import InvalidId
 from flask import (
-    current_app, flash, redirect, render_template, request, send_file, url_for,
+    current_app, flash, jsonify, redirect, render_template, request, send_file, url_for,
 )
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -361,3 +361,101 @@ def save_activity_review(activity_id):
     if query_string:
         target += f"?{query_string}"
     return redirect(target)
+
+
+def _parse_optional_nonneg_int(raw_value):
+    """
+    For an editable "may be blank" number field: blank -> (None, True) i.e.
+    intentionally cleared; a valid non-negative integer -> (value, True);
+    anything else -> (None, False) i.e. reject and don't save.
+    """
+    raw_value = (raw_value or "").strip()
+    if raw_value == "":
+        return None, True
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return None, False
+    if value < 0:
+        return None, False
+    return value, True
+
+
+@main_bp.route("/history/activity/<activity_id>/additional-info", methods=["POST"])
+def save_additional_info(activity_id):
+    """
+    Save (or add, or correct) no_of_pages / no_of_items - the two fields
+    the VLM extracts via PATCH /api/activities/<id>, but which a human can
+    also fill in manually if missing, or fix if the VLM got it wrong.
+
+    A field submitted BLANK is saved as None (intentionally cleared) rather
+    than left at whatever it was before - an editable field should reflect
+    exactly what's in the box when Save is clicked.
+    """
+    db = current_app.extensions.get("mongo_db")
+    if db is None:
+        return "Database not configured.", 503
+
+    try:
+        obj_id = ObjectId(activity_id)
+    except InvalidId:
+        return "Activity not found.", 404
+
+    no_of_pages, pages_ok = _parse_optional_nonneg_int(request.form.get("no_of_pages"))
+    no_of_items, items_ok = _parse_optional_nonneg_int(request.form.get("no_of_items"))
+
+    if not pages_ok or not items_ok:
+        flash("No. of Pages / No. of Items must be a whole number of 0 or more, or left blank.", "error")
+    else:
+        try:
+            db["all_activities"].update_one(
+                {"_id": obj_id},
+                {"$set": {"no_of_pages": no_of_pages, "no_of_items": no_of_items}},
+            )
+            flash("Additional information saved.", "success")
+        except Exception as e:
+            current_app.logger.error(f"Failed to save additional info for activity '{activity_id}': {e}")
+            flash("Failed to save - please try again.", "error")
+
+    query_string = request.form.get("query_string", "")
+    target = url_for("main.activity_detail", activity_id=activity_id)
+    if query_string:
+        target += f"?{query_string}"
+    return redirect(target)
+
+
+@main_bp.route("/history/activity/<activity_id>/toggle-active-learning", methods=["POST"])
+def toggle_active_learning(activity_id):
+    """
+    Toggles saved_for_active_learning. Turning it ON sets the field to
+    True. Turning it OFF REMOVES the field entirely ($unset) rather than
+    setting it to False - "not saved" and "field doesn't exist" are the
+    same state by design, not a soft-false flag left lying around.
+
+    Called via fetch() from the page - the click IS the save, no separate
+    confirm step. Returns JSON (not a redirect) so the button can update
+    its own color instantly without a full page reload.
+    """
+    db = current_app.extensions.get("mongo_db")
+    if db is None:
+        return jsonify({"error": "Database not configured"}), 503
+
+    try:
+        obj_id = ObjectId(activity_id)
+    except InvalidId:
+        return jsonify({"error": "Activity not found"}), 404
+
+    doc = db["all_activities"].find_one({"_id": obj_id}, {"saved_for_active_learning": 1})
+    if doc is None:
+        return jsonify({"error": "Activity not found"}), 404
+
+    currently_saved = bool(doc.get("saved_for_active_learning"))
+
+    if currently_saved:
+        db["all_activities"].update_one({"_id": obj_id}, {"$unset": {"saved_for_active_learning": ""}})
+        new_state = False
+    else:
+        db["all_activities"].update_one({"_id": obj_id}, {"$set": {"saved_for_active_learning": True}})
+        new_state = True
+
+    return jsonify({"saved_for_active_learning": new_state}), 200
