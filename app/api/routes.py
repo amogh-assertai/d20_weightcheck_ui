@@ -213,6 +213,11 @@ def list_activities():
       order_number             - matches either expected_order_number or
                                  actual_order_number
       has_comment              - "present" or "absent"
+      saved_for_active_learning - "true" or "false". This field is only
+                                 ever set to True or removed entirely (see
+                                 toggle_active_learning below) - never
+                                 stored as False - so "false" here matches
+                                 "field doesn't exist", not a stored False.
 
     No pagination (by explicit choice) - returns every matching record in
     one response: {"count": N, "activities": [...]}. Documents are returned
@@ -249,11 +254,14 @@ def list_activities():
     error_type_param = request.args.get("error_type")
     order_number_param = request.args.get("order_number")
     has_comment_param = request.args.get("has_comment")
+    active_learning_param = request.args.get("saved_for_active_learning")
 
     if error_type_param is not None and error_type_param not in VALID_ERROR_TYPES:
         return jsonify({"error": f"'error_type' must be one of {sorted(VALID_ERROR_TYPES)}"}), 400
     if has_comment_param is not None and has_comment_param not in ("present", "absent"):
         return jsonify({"error": "'has_comment' must be 'present' or 'absent'"}), 400
+    if active_learning_param is not None and active_learning_param.lower() not in ("true", "false"):
+        return jsonify({"error": "'saved_for_active_learning' must be 'true' or 'false'"}), 400
 
     # Built as a list of independent conditions, combined with $and only if
     # there's more than one - avoids two top-level $or keys silently
@@ -288,6 +296,14 @@ def list_activities():
             {"review_comment": None},
             {"review_comment": ""},
         ]})
+
+    if active_learning_param is not None:
+        if active_learning_param.lower() == "true":
+            # saved_for_active_learning is only ever set to True or removed
+            # entirely (see toggle_active_learning) - never stored as False.
+            conditions.append({"saved_for_active_learning": True})
+        else:
+            conditions.append({"saved_for_active_learning": {"$exists": False}})
 
     if len(conditions) > 1:
         mongo_query = {"$and": conditions}
@@ -419,3 +435,33 @@ def update_activity(activity_id):
 
     current_app.logger.info(f"AI-updated activity {activity_id}: {', '.join(updated_field_names)}")
     return jsonify({"status": "updated", "id": activity_id, "updated_fields": updated_field_names}), 200
+
+
+@api_bp.route("/activities/clear-active-learning", methods=["POST"])
+def clear_active_learning():
+    """
+    Bulk-clears saved_for_active_learning from EVERY activity that
+    currently has it set. Removes the field entirely ($unset), matching
+    the same rule as the single-activity toggle in
+    app/main/history_routes.py::toggle_active_learning - "not saved" and
+    "field doesn't exist" are the same state, never a stored False.
+
+    No request body needed. Intended for a periodic/manual bulk cleanup
+    after a batch of images has been pulled for active learning - not
+    something a single-activity workflow should ever need to call.
+    """
+    db = current_app.extensions.get("mongo_db")
+    if db is None:
+        return jsonify({"error": "Storage backend unavailable"}), 503
+
+    try:
+        result = db["all_activities"].update_many(
+            {"saved_for_active_learning": {"$exists": True}},
+            {"$unset": {"saved_for_active_learning": ""}},
+        )
+    except PyMongoError as e:
+        current_app.logger.error(f"Failed to bulk-clear active learning flags: {e}")
+        return jsonify({"error": "Failed to clear active learning flags"}), 503
+
+    current_app.logger.info(f"Cleared saved_for_active_learning from {result.modified_count} activity(ies)")
+    return jsonify({"status": "cleared", "cleared_count": result.modified_count}), 200
